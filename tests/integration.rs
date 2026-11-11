@@ -192,7 +192,7 @@ fn every_compiler_error_variant_displays() {
         (
             CompilerError::Io {
                 path: "x.rs".into(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, "gone"),
+                source: std::io::Error::other("gone"),
             },
             "cannot read `x.rs`",
         ),
