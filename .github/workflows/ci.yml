@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    uses: WyattAu/engineering-standards/.github/workflows/rust-kit.yml@024f2b5fc013a77316077cea58c9820d1bbfdd28 # main @ 2026-10-03
+    with:
+      tier: b            # ≥80% line coverage; scanner, pipeline, and e2e suites (lean_oracle excluded: needs elan, see the lean-oracle job)
+      all-features: true
+      loom: false        # n/a — no lock-free shared-memory primitives (recorded)
+      wasm: false        # n/a — the compiler is the native build-time tool (recorded)
+      miri: false        # n/a — no unsafe blocks, no FFI (lean is spawned, not linked)
+
+  lean-oracle:
+    # REQ-P2 oracle: real kernel runs against the fixture package.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: install elan with the fixture toolchain
+        run: |
+          curl -sSfL https://elan.lean-lang.org/elan-init.sh | sh -s -- -y --default-toolchain leanprover/lean4:v4.35.0
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+      - name: run the lean oracle suite
+        run: cargo test --locked --test lean_oracle -- --ignored
