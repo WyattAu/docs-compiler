@@ -154,3 +154,90 @@ fn witness_assertion_mismatch_fails_the_build() {
         other => panic!("expected WitnessAssert, got {other:?}"),
     }
 }
+
+#[test]
+fn every_compiler_error_variant_displays() {
+    // Construct every variant directly (several cannot be triggered on a
+    // green path) and assert the Display arms produce distinguishing
+    // text: the coverage + message-quality oracle for error.rs.
+    use docs_compiler::CompilerError;
+    use docs_symbols::SymbolError;
+    use docs_witness::WitnessError;
+
+    let cases: Vec<(CompilerError, &str)> = vec![
+        (
+            CompilerError::Symbol(SymbolError::BadPath {
+                reason: "empty path".into(),
+            }),
+            "include-symbol failed",
+        ),
+        (
+            CompilerError::Witness(WitnessError::NoEntrypoint),
+            "witness failed",
+        ),
+        (
+            CompilerError::WitnessAssert(docs_witness::AssertionError::Exit {
+                expected: 0,
+                actual: 1,
+            }),
+            "witness assertion failed",
+        ),
+        (
+            CompilerError::Lean {
+                theorem: "t".into(),
+                detail: "d".into(),
+            },
+            "lean-check failed for `t`",
+        ),
+        (
+            CompilerError::Io {
+                path: "x.rs".into(),
+                source: std::io::Error::new(std::io::ErrorKind::Other, "gone"),
+            },
+            "cannot read `x.rs`",
+        ),
+        (
+            CompilerError::Attribute {
+                directive: "witness",
+                reason: "missing `wasm`".into(),
+            },
+            "bad witness fence",
+        ),
+        (
+            CompilerError::Render(docs_core::DocsError::IslandWithoutName("".into())),
+            "markdown render failed",
+        ),
+    ];
+    for (error, needle) in cases {
+        let rendered = error.to_string();
+        assert!(
+            rendered.contains(needle),
+            "display `{rendered}` missing `{needle}`"
+        );
+    }
+}
+
+#[test]
+fn attribute_and_io_failures_are_typed() {
+    let (_guard, root) = setup_root();
+    // Missing required attribute.
+    let doc = "```witness fuel=10\n```\n\nprose\n";
+    match compile(doc, &BuildContext::new(&root)) {
+        Err(docs_compiler::CompilerError::Attribute { directive, .. }) => {
+            assert_eq!(directive, "witness");
+        }
+        other => panic!("expected Attribute, got {other:?}"),
+    }
+    // Named file does not exist.
+    let doc = "```include-symbol file=\"nope.rs\" symbol=\"x\"\n```\n";
+    match compile(doc, &BuildContext::new(&root)) {
+        Err(docs_compiler::CompilerError::Io { path, .. }) => assert_eq!(path, "nope.rs"),
+        other => panic!("expected Io, got {other:?}"),
+    }
+    // Island props are validated by docs-core (Render variant path).
+    let doc = "```island x client=visible\nnot-json\n```\n";
+    match compile(doc, &BuildContext::new(&root)) {
+        Err(docs_compiler::CompilerError::Render(_)) => {}
+        other => panic!("expected Render, got {other:?}"),
+    }
+}
