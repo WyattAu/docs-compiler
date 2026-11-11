@@ -20,6 +20,7 @@ jobs:
       loom: false        # n/a — no lock-free shared-memory primitives (recorded)
       wasm: false        # n/a — the compiler is the native build-time tool (recorded)
       miri: false        # n/a — no unsafe blocks, no FFI (lean is spawned, not linked)
+      coverage-ignore-regex: '^(src/main\.rs|src/lean\.rs)$' # process surfaces per template ADR-0005: the CLI arg handling and the out-of-process lean invocation (its correctness is the lean-oracle job's, which runs this exact code)
 
   lean-oracle:
     # REQ-P2 oracle: real kernel runs against the fixture package.

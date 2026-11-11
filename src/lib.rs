@@ -33,6 +33,7 @@
 mod directives;
 mod error;
 mod fences;
+mod lean;
 
 pub use directives::{resolve, BuildContext};
 pub use error::CompilerError;

@@ -218,6 +218,23 @@ fn every_compiler_error_variant_displays() {
 }
 
 #[test]
+fn error_source_chains_are_wired() {
+    // std::error::Error::source() must expose the inner failure for the
+    // wrapping variants (error.rs's accessor arms).
+    use std::error::Error as _;
+
+    let e = docs_compiler::CompilerError::Symbol(docs_symbols::SymbolError::BadPath {
+        reason: "empty path".into(),
+    });
+    assert!(e.source().is_some());
+    let e = docs_compiler::CompilerError::Lean {
+        theorem: "t".into(),
+        detail: "d".into(),
+    };
+    assert!(e.source().is_none(), "Lean carries its detail inline");
+}
+
+#[test]
 fn attribute_and_io_failures_are_typed() {
     let (_guard, root) = setup_root();
     // Missing required attribute.
