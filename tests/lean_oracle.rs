@@ -38,6 +38,57 @@ fn theorem_name(lean_file: &str) -> &'static str {
 
 #[test]
 #[ignore = "requires lean on PATH; runs in the lean-oracle CI job"]
+fn four_kind_end_to_end_with_real_lean() {
+    // The true M4 close criterion: one document, all four directive
+    // kinds, real kernel in the loop.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root: PathBuf = dir.path().to_path_buf();
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-fixtures/lean");
+    for name in ["no_arbitrage.lean", "lean-toolchain"] {
+        std::fs::copy(fixtures.join(name), root.join(name)).expect("copy lean fixture");
+    }
+    std::fs::write(root.join("sample.rs"), "pub fn answer() -> u32 { 42 }\n").expect("sample.rs");
+    let wat = r#"
+    (module
+      (import "wasi_snapshot_preview1" "fd_write"
+        (func $fd_write (param i32 i32 i32 i32) (result i32)))
+      (memory (export "memory") 1)
+      (data (i32.const 0) "\10\00\00\00\02\00\00\00")
+      (data (i32.const 16) "ok")
+      (func (export "_start")
+        i32.const 1
+        i32.const 0
+        i32.const 1
+        i32.const 48
+        call $fd_write
+        drop))
+    "#;
+    std::fs::write(root.join("ok.wasm"), wat::parse_str(wat).expect("wat")).expect("wasm");
+
+    let doc = r#"# Four kinds
+
+```island nav-search client=visible
+{"count": 4}
+```
+
+```include-symbol file="sample.rs" symbol="answer"
+```
+
+```witness wasm="ok.wasm" assert_stdout="ok" assert_exit=0
+```
+
+```lean-check file="no_arbitrage.lean" theorem="no_arbitrage_round_trip" toolchain="leanprover/lean4:v4.35.0"
+```
+"#;
+    let html = compile(doc, &BuildContext::new(&root)).expect("builds");
+    assert!(html.contains("<docs-island"));
+    assert!(html.contains("docs-symbol") && html.contains("pub fn answer"));
+    assert!(html.contains("docs-witness") && html.contains("ok"));
+    assert!(html.contains("docs-proof") && html.contains("data-proof-certificate"));
+}
+
+#[test]
+#[ignore = "requires lean on PATH; runs in the lean-oracle CI job"]
 fn positive_theorem_produces_a_real_certificate() {
     let (_guard, root, doc) = root_with("no_arbitrage.lean");
     let html = compile(&doc, &BuildContext::new(&root)).expect("lean verifies the theorem");

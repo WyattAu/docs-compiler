@@ -76,6 +76,7 @@ Closing prose.
 }
 
 #[test]
+#[ignore = "the lean-check fence needs lean on PATH; the four-kind e2e runs in the lean-oracle CI job"]
 fn end_to_end_page_with_all_four_directive_kinds() {
     let (_guard, root) = setup_root();
     let html = compile(&document(), &BuildContext::new(&root)).expect("builds");
@@ -100,6 +101,33 @@ fn end_to_end_page_with_all_four_directive_kinds() {
     );
     assert!(html.contains("<h1>Program page</h1>"), "markdown rendered");
     assert!(html.contains("Closing prose."), "trailing markdown kept");
+}
+
+/// The lean-free subset (island + include-symbol + witness): runs in the
+/// shared quality job, where elan is not installed.
+#[test]
+fn end_to_end_page_without_lean_directives() {
+    let (_guard, root) = setup_root();
+    let doc = r#"# Lean-free page
+
+```island nav-search client=visible
+{"count": 1}
+```
+
+```include-symbol file="sample.rs" symbol="engine::spin_up"
+```
+
+```witness wasm="hello.wasm" assert_stdout="hello" assert_exit=0
+```
+
+Tail prose.
+"#;
+    let html = compile(doc, &BuildContext::new(&root)).expect("builds");
+    assert!(html.contains("<docs-island"));
+    assert!(html.contains("docs-symbol") && html.contains("dsym-rust-"));
+    assert!(html.contains("docs-witness") && html.contains("hello"));
+    assert!(html.contains("<h1>Lean-free page</h1>"));
+    assert!(!html.contains("docs-proof"), "no lean fence, no badge");
 }
 
 #[test]
