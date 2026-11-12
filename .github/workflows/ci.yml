@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   quality:
-    uses: WyattAu/engineering-standards/.github/workflows/rust-kit.yml@4883fca0ea86 # main @ 2026-11-12
+    uses: WyattAu/engineering-standards/.github/workflows/rust-kit.yml@4883fca0ea86332addafaa8ba999d53ea4409ec4 # main @ 2026-11-12
     with:
       tier: b            # ≥80% line coverage; scanner, pipeline, and e2e suites (lean_oracle excluded: needs elan, see the lean-oracle job)
       all-features: true
