@@ -41,6 +41,16 @@ docs-compiler <input.md> [-o out.html] [--root dir]
 Directive-relative paths resolve against `--root` (default: the input's
 directory).
 
+## Where the truth lives
+
+| Concern | Truth | Path |
+|---|---|---|
+| Directive grammar + fence resolution | source of record | `src/directives.rs`, `src/fences.rs` |
+| Lean invocation (out-of-process, REQ-P1) | source of record | `src/lean.rs` |
+| Typed failures | source of record | `src/error.rs` |
+| Program SPEC, crate topology, milestones | SPEC | `docs-core/SPEC.md` |
+| Layer declaration + lean-oracle CI job | manifest + workflow | `Cargo.toml`, `.github/workflows/ci.yml` |
+
 ## Layer
 
 L3 - composition: docs-core (L2) + docs-symbols/docs-witness/docs-proof
