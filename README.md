@@ -46,6 +46,7 @@ directory).
 | Concern | Truth | Path |
 |---|---|---|
 | Directive grammar + fence resolution | source of record | `src/directives.rs`, `src/fences.rs` |
+| Dev server (site compile, routing, MIME) | source of record | `src/serve.rs` |
 | Lean invocation (out-of-process, REQ-P1) | source of record | `src/lean.rs` |
 | Typed failures | source of record | `src/error.rs` |
 | Program SPEC, crate topology, milestones | SPEC | `docs-core/SPEC.md` |

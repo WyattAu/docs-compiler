@@ -1,6 +1,6 @@
 [package]
 name = "docs-compiler"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Wyatt Au <wyatt_au@protonmail.com>"]
@@ -24,11 +24,16 @@ tier = "L3"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-docs-core = "0.1"
+docs-core = "0.2"
 docs-proof = "0.1"
 docs-symbols = "0.1"
 docs-witness = "0.1"
 thiserror = "2"
+# Wave 2 dev server: the smallest honest HTTP + watch pair. tiny_http is
+# zero-framework (one thread, no async runtime); notify watches the
+# source tree. Both are CLI-only concerns (docs-core stays L2).
+tiny_http = "0.12"
+notify = "8"
 
 [dev-dependencies]
 tempfile = "3"

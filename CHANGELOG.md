@@ -23,3 +23,27 @@ All notable changes to this project are documented in this file.
   and the `lean_oracle` suite (REQ-P2 oracle: positive, kernel
   rejection, sorry) against the pinned `leanprover/lean4:v4.35.0`
   fixture package.
+
+## [0.2.0] - 2026-11-13
+
+### Added
+
+- **Dev server (Wave 2):** `docs-compiler serve <src-dir>` compiles every
+  markdown page under a directory and serves the result, recompiling on
+  any source change (notify, debounced). One bad page reports and the
+  site keeps serving the last good HTML - fail-loud, not fail-dead.
+  Routing: `index.html` for directory roots, extensionless `.html`
+  fallback, percent-decoding, traversal rejection. Binds 0.0.0.0 by
+  default so phones on the LAN can open the preview (verified on-device
+  via adb: build-time MathML renders in mobile Chrome with zero client
+  JS). The reusable half (site compile, routing, MIME) lives in the
+  library and is unit-tested; the socket loop and watcher stay in the
+  binary.
+
+### Changed
+
+- **Breaking (CLI):** `docs-compiler <input>` became
+  `docs-compiler compile <input>` (plus the new `serve` subcommand).
+- Dependency floor: `docs-core = "0.2"`, plus CLI-only `tiny_http`,
+  `notify` (docs-core itself stays L2 with no web framework - the
+  server is a compiler concern, recorded in the ledger as W2-3).
