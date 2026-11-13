@@ -1,6 +1,6 @@
 //! Fence scanning: find directive fences in markdown, parse attributes.
 
-/// The three directive fences this compiler resolves. Island fences are
+/// The four directive fences this compiler resolves. Island fences are
 /// not here: docs-core renders those natively.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DirectiveKind {
@@ -10,6 +10,8 @@ pub enum DirectiveKind {
     Witness,
     /// `lean-check file=... theorem=... toolchain=...`
     LeanCheck,
+    /// `d2` + body: a D2 diagram rendered to static SVG at build time.
+    Diagram,
 }
 
 impl DirectiveKind {
@@ -18,6 +20,7 @@ impl DirectiveKind {
             Self::IncludeSymbol => "include-symbol",
             Self::Witness => "witness",
             Self::LeanCheck => "lean-check",
+            Self::Diagram => "d2",
         }
     }
 
@@ -28,6 +31,8 @@ impl DirectiveKind {
             Some(Self::Witness)
         } else if info.starts_with("lean-check") {
             Some(Self::LeanCheck)
+        } else if info.starts_with("d2") {
+            Some(Self::Diagram)
         } else {
             None
         }
@@ -41,6 +46,10 @@ pub struct Directive {
     pub kind: DirectiveKind,
     /// Parsed `key=value` attributes (quotes stripped, order preserved).
     pub attrs: Vec<(String, String)>,
+    /// The fence body: everything between the opening and closing fence
+    /// lines, verbatim. (File-reading directives ignore it; body-driven
+    /// directives like `d2` own it.)
+    pub body: String,
     /// Byte range of the whole fence (opening line through closing
     /// triple-backtick), into the original source.
     pub byte_range: (usize, usize),
@@ -163,19 +172,26 @@ pub fn scan(source: &str) -> Scanned<'_> {
                         .map(|p| scan + p)
                         .unwrap_or(bytes.len());
                     if source.get(scan..e).unwrap_or_default().trim() == "```" {
-                        close = Some(e);
+                        close = Some((scan, e));
                         break;
                     }
                     scan = e + 1;
                 }
-                let end = close.unwrap_or(bytes.len());
+                let (close_start, close_end) = close.unwrap_or((bytes.len(), bytes.len()));
+                // The body is everything between the opening line and the
+                // closing fence line, verbatim.
+                let body = source
+                    .get(line_end + 1..close_start)
+                    .unwrap_or_default()
+                    .to_string();
                 blocks.push(Block::Directive(Directive {
                     kind,
                     attrs: parse_attrs(info),
-                    byte_range: (cursor, end),
+                    body,
+                    byte_range: (cursor, close_end),
                 }));
-                cursor = end;
-                text_start = end;
+                cursor = close_end;
+                text_start = close_end;
                 continue;
             }
         }

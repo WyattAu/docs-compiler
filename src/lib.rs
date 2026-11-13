@@ -30,6 +30,7 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
+mod d2;
 mod directives;
 mod error;
 mod fences;

@@ -20,7 +20,7 @@ jobs:
       loom: false        # n/a — no lock-free shared-memory primitives (recorded)
       wasm: false        # n/a — the compiler is the native build-time tool (recorded)
       miri: false        # n/a — no unsafe blocks, no FFI (lean is spawned, not linked)
-      coverage-ignore-regex: 'src/(main|lean)\.rs$' # process surfaces per template ADR-0005: the CLI arg handling and the out-of-process lean invocation (its correctness is the lean-oracle job's, which runs this exact code). llvm-cov matches against absolute paths, so this is a suffix match.
+      coverage-ignore-regex: 'src/(main|lean|d2)\.rs$' # process surfaces per template ADR-0005: the CLI arg handling, the out-of-process lean invocation, and the out-of-process d2 rendering (their correctness is the lean-oracle and diagram-oracle jobs', which run this exact code) # process surfaces per template ADR-0005: the CLI arg handling and the out-of-process lean invocation (its correctness is the lean-oracle job's, which runs this exact code). llvm-cov matches against absolute paths, so this is a suffix match.
 
   lean-oracle:
     # REQ-P2 oracle: real kernel runs against the fixture package.
@@ -38,3 +38,24 @@ jobs:
       - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
       - name: run the lean oracle suite
         run: cargo test --locked --test lean_oracle -- --ignored
+
+  diagram-oracle:
+    # Wave 2b oracle: real d2 runs against the diagram fences. Same
+    # doctrine as lean-oracle: the binary is installed pinned, and the
+    # ignored suite runs this exact code.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
+      - name: install d2 (pinned release)
+        run: |
+          curl -fsSL https://github.com/terrastruct/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz -o /tmp/d2.tgz
+          tar -xz -C /tmp -f /tmp/d2.tgz
+          sudo install /tmp/d2-v0.9.0/bin/d2 /usr/local/bin/d2
+          d2 --version
+      - name: run the diagram oracle suite
+        run: cargo test --locked --test diagram_oracle -- --ignored --test-threads=1 # the PATH test mutates process env

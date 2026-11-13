@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use docs_symbols::Language;
 use docs_witness::{check, run, Assertions, WitnessConfig};
 
+use crate::d2::diagram;
 use crate::error::CompilerError;
 use crate::fences::{Directive, DirectiveKind};
 use crate::lean::lean_check;
@@ -45,6 +46,7 @@ pub fn resolve(d: &Directive, ctx: &BuildContext) -> Result<String, CompilerErro
         DirectiveKind::IncludeSymbol => include_symbol(d, ctx),
         DirectiveKind::Witness => witness(d, ctx),
         DirectiveKind::LeanCheck => lean_check(d, ctx),
+        DirectiveKind::Diagram => diagram(d, ctx),
     }
 }
 

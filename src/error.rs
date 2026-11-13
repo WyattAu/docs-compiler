@@ -19,6 +19,13 @@ pub enum CompilerError {
         /// What went wrong, for diagnosis.
         detail: String,
     },
+    /// A `d2` fence failed: the `d2` binary is missing, rejected the
+    /// diagram source, or could not be spawned.
+    Diagram {
+        /// What went wrong, for diagnosis (spawning, exit status, or
+        /// the compiler's diagnostics).
+        detail: String,
+    },
     /// A fenced directive named a file that does not exist or could not
     /// be read.
     Io {
@@ -47,6 +54,7 @@ impl std::fmt::Display for CompilerError {
             Self::Lean { theorem, detail } => {
                 write!(f, "lean-check failed for `{theorem}`: {detail}")
             }
+            Self::Diagram { detail } => write!(f, "d2 fence failed: {detail}"),
             Self::Io { path, source } => write!(f, "cannot read `{path}`: {source}"),
             Self::Attribute { directive, reason } => {
                 write!(f, "bad {directive} fence: {reason}")

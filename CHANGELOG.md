@@ -47,3 +47,20 @@ All notable changes to this project are documented in this file.
 - Dependency floor: `docs-core = "0.2"`, plus CLI-only `tiny_http`,
   `notify` (docs-core itself stays L2 with no web framework - the
   server is a compiler concern, recorded in the ledger as W2-3).
+
+## [0.3.0] - 2026-11-13
+
+### Added
+
+- **Diagrams (Wave 2b):** the `d2` fence renders Terrastruct D2 source
+  to static SVG at build time - `d2` is spawned out-of-process (the
+  REQ-P1 doctrine: tools are never linked), the SVG embeds verbatim in
+  a `figure.docs-diagram`, and pages carry no diagram runtime.
+  Attributes: `layout=` (passed as `--layout`) and `caption=`
+  (figcaption). A missing binary, nonzero exit, or empty output fails
+  the build naming the fence (`CompilerError::Diagram`).
+- `Directive` now carries the fence `body` verbatim (body-driven
+  directives like `d2`; file-reading directives ignore it).
+- New `diagram-oracle` CI job (mirrors lean-oracle): installs d2 v0.9.0
+  pinned, runs the ignored `diagram_oracle` suite serially (the
+  missing-binary test mutates the process PATH).
