@@ -17,6 +17,9 @@ allow = [
   "BSD-2-Clause",
   "BSD-3-Clause",
   "ISC",
+  # ammonia (Wave 2 sanitization) and its cssparser chain are MPL-2.0:
+  # file-level copyleft, no effect on this crate's MIT/Apache licensing.
+  "MPL-2.0",
   "Unicode-3.0",
   "Zlib",
   "CDLA-Permissive-2.0",
