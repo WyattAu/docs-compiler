@@ -77,3 +77,25 @@ All notable changes to this project are documented in this file.
   collapses blank lines (layout is unaffected). Caught by rendering a
   real page on a phone: the figure was there, the diagram was not.
   0.3.0 is yanked.
+
+## [0.4.0] - 2026-11-13
+
+### Added
+
+- **SEO emission (Wave 2c), per the estate-seo floor:** every site page
+  compiles to a FULL HTML document with title, meta description,
+  canonical, Open Graph, Twitter card, and JSON-LD (`TechArticle` +
+  `WebSite`, named author, `datePublished`); a `site.toml` in the source
+  root (`base_url`, `site_title`, `author`, `ai_crawlers`) additionally
+  emits `llms.txt` (one curated link per page), `sitemap.xml` (sorted,
+  `lastmod` only from declared dates), and `robots.txt` whose
+  AI-crawler policy is a RECORDED decision (`allow` default /
+  `block-training` / `block-all`, stated in a comment beside the rules).
+- Page inputs: `---` front-matter with `title`, `description`, `slug`
+  (route override), `date`. Fallbacks: first `<h1>` for title, first
+  paragraph (word-bounded at 155 chars) for description, file stem
+  otherwise.
+- `SiteReport` gains `warnings` (title >60 chars, description >155,
+  missing description - the floor's guidance, not errors) and `pages`
+  (the SEO view of every built route).
+- `serde_json` joins the floor (JSON-LD emission).

@@ -529,7 +529,7 @@ dependencies = [
 
 [[package]]
 name = "docs-compiler"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "clap",
  "docs-core",
@@ -537,6 +537,7 @@ dependencies = [
  "docs-symbols",
  "docs-witness",
  "notify",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.21",
  "tiny_http",

@@ -1,6 +1,6 @@
 [package]
 name = "docs-compiler"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Wyatt Au <wyatt_au@protonmail.com>"]
@@ -34,6 +34,8 @@ thiserror = "2"
 # source tree. Both are CLI-only concerns (docs-core stays L2).
 tiny_http = "0.12"
 notify = "8"
+# SEO (Wave 2c): JSON-LD emission for the document wrapper.
+serde_json = "1"
 
 [dev-dependencies]
 tempfile = "3"

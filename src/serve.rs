@@ -4,12 +4,20 @@
 //! thin wrappers in the binary; everything with logic lives here and is
 //! unit-tested.
 //!
+//! Since Wave 2c every page compiles to a FULL HTML document carrying
+//! the estate-seo floor's head artifacts (title, description, canonical,
+//! Open Graph, JSON-LD); a `site.toml` with `base_url` additionally
+//! emits `llms.txt`, `sitemap.xml`, and `robots.txt` (with the
+//! AI-crawler policy as a recorded decision). Per-page inputs come from
+//! `---` front-matter (`title`, `description`, `slug`, `date`).
+//!
 //! Design note (plan ledger W2-3): the server lives in docs-compiler,
 //! not docs-core - docs-core is L2 with no web framework, and serving
 //! is a CLI concern. The server never dies on a bad page: compile
 //! errors are collected per page, printed, and the site keeps serving
 //! the last good HTML (fail-loud, not fail-dead).
 
+use crate::seo::{self, SeoPage, SiteConfig};
 use crate::{compile, BuildContext};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -21,25 +29,40 @@ pub struct SiteReport {
     pub built: Vec<PathBuf>,
     /// Pages that failed: (source path, error text).
     pub errors: Vec<(PathBuf, String)>,
+    /// Content-quality warnings (title > 60 chars, description > 155,
+    /// missing description): the estate-seo floor's guidance, not errors.
+    pub warnings: Vec<String>,
+    /// The SEO view of every built page (route, title, description,
+    /// date) - also the source for llms.txt and sitemap.xml.
+    pub pages: Vec<SeoPage>,
+    /// Whether a `site.toml` provided site-wide settings.
+    pub configured: bool,
 }
 
 impl SiteReport {
     /// Whether every page compiled.
-    #[must_use]
     pub fn is_clean(&self) -> bool {
         self.errors.is_empty()
     }
 }
 
 /// Compile every `.md` under `src` (recursive, hidden dirs skipped) into
-/// the mirrored `.html` layout under `out`. Directive roots are each
-/// page's own directory, matching the single-file CLI's default. One bad
-/// page never blocks the others: its error lands in the report.
+/// the mirrored `.html` layout under `out`, as full documents with the
+/// SEO head. Front-matter (`title`, `description`, `slug`, `date`)
+/// overrides the title/description/route/date fallbacks. Directive roots
+/// are each page's own directory, matching the single-file CLI's
+/// default. One bad page never blocks the others: its error lands in
+/// the report. A `site.toml` with `base_url` additionally emits
+/// `llms.txt`, `sitemap.xml`, and `robots.txt` into `out`.
 ///
 /// # Errors
 /// I/O failures on the tree walk or output creation.
 pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
-    let mut report = SiteReport::default();
+    let config = SiteConfig::load(src);
+    let mut report = SiteReport {
+        configured: config.is_some(),
+        ..SiteReport::default()
+    };
     let mut stack = vec![src.to_path_buf()];
     while let Some(dir) = stack.pop() {
         for entry in std::fs::read_dir(&dir)? {
@@ -52,34 +75,114 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
                     stack.push(path);
                 }
             } else if name.ends_with(".md") {
-                let rel = path.strip_prefix(src).unwrap_or(&path).to_path_buf();
-                let target_rel = rel.with_extension("html");
-                let target = out.join(&target_rel);
-                if let Some(parent) = target.parent() {
-                    std::fs::create_dir_all(parent)?;
-                }
-                let source = match std::fs::read_to_string(&path) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        report.errors.push((path, e.to_string()));
-                        continue;
-                    }
-                };
-                let root = path
-                    .parent()
-                    .filter(|p| !p.as_os_str().is_empty())
-                    .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
-                match compile(&source, &BuildContext::new(root)) {
-                    Ok(html) => {
-                        std::fs::write(&target, html)?;
-                        report.built.push(path);
-                    }
-                    Err(e) => report.errors.push((path, e.to_string())),
-                }
+                build_one_page(src, out, &path, config.as_ref(), &mut report);
             }
         }
     }
+    if let Some(config) = &config {
+        let page_refs: &[SeoPage] = &report.pages;
+        std::fs::write(out.join("llms.txt"), seo::llms_txt(config, page_refs))?;
+        std::fs::write(out.join("sitemap.xml"), seo::sitemap_xml(config, page_refs))?;
+        std::fs::write(out.join("robots.txt"), seo::robots_txt(config))?;
+    }
     Ok(report)
+}
+
+/// Build one page: front-matter, compile, head, write, report.
+fn build_one_page(
+    src: &Path,
+    out: &Path,
+    path: &Path,
+    config: Option<&SiteConfig>,
+    report: &mut SiteReport,
+) {
+    let rel = match path.strip_prefix(src) {
+        Ok(r) => r.to_path_buf(),
+        Err(_) => path.to_path_buf(),
+    };
+    let source = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            report.errors.push((path.to_path_buf(), e.to_string()));
+            return;
+        }
+    };
+    let (meta, body_markdown) = seo::split_front_matter(&source);
+    let root = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+    let body = match compile(&body_markdown, &BuildContext::new(root)) {
+        Ok(html) => html,
+        Err(e) => {
+            report.errors.push((path.to_path_buf(), e.to_string()));
+            return;
+        }
+    };
+
+    let stem = meta.slug.clone().unwrap_or_else(|| {
+        rel.file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned()
+    });
+    let dir = rel.parent().unwrap_or(Path::new(""));
+    let route = if dir.as_os_str().is_empty() {
+        format!("{stem}.html")
+    } else {
+        format!("{}/{}.html", dir.display(), stem)
+    };
+    let title = meta
+        .title
+        .clone()
+        .or_else(|| seo::first_h1(&body))
+        .unwrap_or_else(|| {
+            rel.file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "Untitled".to_string())
+        });
+    let description = meta
+        .description
+        .clone()
+        .or_else(|| seo::first_paragraph(&body))
+        .unwrap_or_default();
+
+    if title.chars().count() > 60 {
+        report.warnings.push(format!(
+            "{route}: title is {} chars (guidance: <= 60)",
+            title.chars().count()
+        ));
+    }
+    if description.is_empty() {
+        report.warnings.push(format!(
+            "{route}: no description (front-matter or first paragraph)"
+        ));
+    } else if description.chars().count() > 155 {
+        report.warnings.push(format!(
+            "{route}: description is {} chars (guidance: <= 155)",
+            description.chars().count()
+        ));
+    }
+
+    let document = seo::document(&body, &meta, &title, &description, &route, config);
+    let target = out.join(&route);
+    if let Some(parent) = target.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            report.errors.push((path.to_path_buf(), e.to_string()));
+            return;
+        }
+    }
+    if let Err(e) = std::fs::write(&target, document) {
+        report.errors.push((path.to_path_buf(), e.to_string()));
+        return;
+    }
+    report.built.push(path.to_path_buf());
+    report.pages.push(SeoPage {
+        route,
+        title,
+        description,
+        date: meta.date,
+    });
 }
 
 /// Map a request path to a file under `out`: empty → `index.html`;
@@ -158,6 +261,7 @@ pub fn mime_for(path: &Path) -> &'static str {
         "ico" => "image/x-icon",
         "md" => "text/markdown; charset=utf-8",
         "xml" => "application/xml",
+        "txt" => "text/plain; charset=utf-8",
         "woff2" => "font/woff2",
         _ => "text/plain; charset=utf-8",
     }

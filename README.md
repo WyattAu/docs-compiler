@@ -48,6 +48,7 @@ directory).
 | Directive grammar + fence resolution | source of record | `src/directives.rs`, `src/fences.rs` |
 | Diagram rendering (d2 -> static SVG) | source of record | `src/d2.rs` |
 | Dev server (site compile, routing, MIME) | source of record | `src/serve.rs` |
+| SEO emission (head meta, JSON-LD, llms.txt, sitemap, robots) | source of record | `src/seo.rs` |
 | Lean invocation (out-of-process, REQ-P1) | source of record | `src/lean.rs` |
 | Typed failures | source of record | `src/error.rs` |
 | Program SPEC, crate topology, milestones | SPEC | `docs-core/SPEC.md` |

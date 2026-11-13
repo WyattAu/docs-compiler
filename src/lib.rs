@@ -35,11 +35,16 @@ mod directives;
 mod error;
 mod fences;
 mod lean;
+mod seo;
 mod serve;
 
 pub use directives::{resolve, BuildContext};
 pub use error::CompilerError;
 pub use fences::{scan, Directive, DirectiveKind, Scanned};
+pub use seo::{
+    document, first_h1, first_paragraph, llms_txt, robots_txt, sitemap_xml, split_front_matter,
+    PageMeta, SeoPage, SiteConfig,
+};
 pub use serve::{compile_site, mime_for, resolve_route, SiteReport};
 
 /// Compile one markdown document into a static HTML page.
