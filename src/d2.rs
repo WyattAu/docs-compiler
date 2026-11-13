@@ -68,6 +68,12 @@ pub(crate) fn diagram(d: &Directive, _ctx: &BuildContext) -> Result<String, Comp
             detail: "d2 produced no output".to_string(),
         });
     }
+    // The substituted HTML must be ONE raw-HTML block: pulldown-cmark
+    // ends the block at the first blank line, and everything after is
+    // re-parsed as markdown (d2's tab-indented CSS turns into indented
+    // code blocks). The SVG's layout does not depend on blank lines, so
+    // they collapse away.
+    let svg = svg.trim().replace("\n\n", "\n");
 
     let caption = d
         .attr("caption")

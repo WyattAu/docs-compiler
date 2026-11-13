@@ -37,6 +37,23 @@ fn d2_fence_renders_static_svg() {
         !html.contains("servers -> db"),
         "the d2 source must not leak: {html}"
     );
+    // The substituted HTML must stay one raw-HTML block: a blank line
+    // inside the SVG would end the block and re-parse the rest (d2's
+    // tab-indented CSS) as markdown.
+    let figure_start = html.find("<figure class=\"docs-diagram\"").expect("figure");
+    let figure_end = html[figure_start..]
+        .find("</figure>")
+        .expect("figure closes")
+        + figure_start;
+    let figure = &html[figure_start..figure_end];
+    assert!(
+        !figure.contains("\n\n") && !figure.contains("<pre><code>"),
+        "figure must survive as one raw-HTML block: {figure}"
+    );
+    assert!(
+        figure.contains("<path") || figure.contains("<text"),
+        "shapes render: {figure}"
+    );
 }
 
 #[test]

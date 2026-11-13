@@ -64,3 +64,16 @@ All notable changes to this project are documented in this file.
 - New `diagram-oracle` CI job (mirrors lean-oracle): installs d2 v0.9.0
   pinned, runs the ignored `diagram_oracle` suite serially (the
   missing-binary test mutates the process PATH).
+
+## [0.3.1] - 2026-11-13
+
+### Fixed
+
+- **The d2 SVG now survives the markdown pass.** d2's output contains
+  blank lines and tab-indented CSS; a blank line ends a raw-HTML block
+  in pulldown-cmark, so everything after the first one was re-parsed as
+  markdown - the tab-indented CSS turned into indented `<pre><code>`
+  blocks and the shapes vanished from the page. The emitted SVG
+  collapses blank lines (layout is unaffected). Caught by rendering a
+  real page on a phone: the figure was there, the diagram was not.
+  0.3.0 is yanked.
