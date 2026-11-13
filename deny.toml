@@ -20,6 +20,8 @@ allow = [
   # ammonia (Wave 2 sanitization) and its cssparser chain are MPL-2.0:
   # file-level copyleft, no effect on this crate's MIT/Apache licensing.
   "MPL-2.0",
+  # notify 8 (dev-server watcher) is CC0-1.0: public-domain-equivalent.
+  "CC0-1.0",
   "Unicode-3.0",
   "Zlib",
   "CDLA-Permissive-2.0",
