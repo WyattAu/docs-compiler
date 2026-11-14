@@ -30,6 +30,7 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
+mod compress;
 mod d2;
 mod directives;
 mod error;
@@ -38,6 +39,7 @@ mod lean;
 mod seo;
 mod serve;
 
+pub use compress::{ext_token, pick_encoding, sidecar_path, Tools};
 pub use directives::{resolve, BuildContext};
 pub use error::CompilerError;
 pub use fences::{scan, Directive, DirectiveKind, Scanned};

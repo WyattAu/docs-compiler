@@ -49,6 +49,7 @@ directory).
 | Diagram rendering (d2 -> static SVG) | source of record | `src/d2.rs` |
 | Dev server (site compile, routing, MIME) | source of record | `src/serve.rs` |
 | SEO emission (head meta, JSON-LD, llms.txt, sitemap, robots) | source of record | `src/seo.rs` |
+| Precompression + shared dictionary (RFC 9842 dcz) | source of record | `src/compress.rs` |
 | Lean invocation (out-of-process, REQ-P1) | source of record | `src/lean.rs` |
 | Typed failures | source of record | `src/error.rs` |
 | Program SPEC, crate topology, milestones | SPEC | `docs-core/SPEC.md` |

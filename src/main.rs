@@ -173,49 +173,104 @@ fn serve(src: &Path, out: Option<PathBuf>, port: u16, addr: &str) {
 }
 
 fn print_report(report: &docs_compiler::SiteReport) {
-    println!("built {} page(s)", report.built.len());
+    println!(
+        "built {} page(s), {} compressed sidecar(s){}",
+        report.built.len(),
+        report.compressed,
+        if report.dictionary {
+            ", shared dictionary: site.dict"
+        } else {
+            ""
+        }
+    );
     for (path, error) in &report.errors {
         eprintln!("  FAILED {}: {error}", path.display());
+    }
+    for warning in &report.warnings {
+        eprintln!("  note: {warning}");
     }
 }
 
 fn respond(request: tiny_http::Request, out: &Path) {
     let url = request.url().to_owned();
-    // `from_bytes` only fails on non-ASCII/colon bytes, which the static
-    // MIME strings never contain; an impossible decode degrades to a
-    // headerless response rather than a panic (the binary keeps the
-    // estate's no-panic lints).
-    let header = |mime: &'static str| {
-        tiny_http::Header::from_bytes(&b"Content-Type"[..], mime.as_bytes()).ok()
-    };
+    let accept = request
+        .headers()
+        .iter()
+        .find(|h| h.field.equiv("Accept-Encoding"))
+        .map(|h| h.value.as_str().to_owned())
+        .unwrap_or_default();
+    let header =
+        |field: &'static str, value: &'static str| tiny_http::Header::from_bytes(field, value).ok();
     let attach = |request: tiny_http::Request,
-                  response: tiny_http::Response<std::io::Cursor<Vec<u8>>>,
-                  mime: &'static str|
+                  mut response: tiny_http::Response<std::io::Cursor<Vec<u8>>>,
+                  mime: &'static str,
+                  encoding: Option<&'static str>|
      -> std::io::Result<()> {
-        let response = match header(mime) {
-            Some(h) => response.with_header(h),
-            None => response,
-        };
+        if let Some(token) = encoding {
+            if let Some(h) = header("Content-Encoding", token) {
+                response = response.with_header(h);
+            }
+            // Negotiated responses vary by the client's encodings.
+            if let Some(h) = header("Vary", "Accept-Encoding") {
+                response = response.with_header(h);
+            }
+        }
+        if let Some(h) = header("Content-Type", mime) {
+            response = response.with_header(h);
+        }
         request.respond(response)
     };
+
+    // The shared dictionary rides `Use-As-Dictionary` (RFC 9842): the
+    // client caches it once, then `dcz` responses decode against it.
+    if url.split(['?', '#']).next() == Some("/site.dict") {
+        let path = out.join("site.dict");
+        if path.is_file() {
+            match std::fs::read(&path) {
+                Ok(data) => {
+                    let mut response = tiny_http::Response::from_data(data);
+                    if let Some(h) = header("Content-Type", "application/zstd") {
+                        response = response.with_header(h);
+                    }
+                    if let Some(h) = header("Use-As-Dictionary", "match=\"/*\"") {
+                        response = response.with_header(h);
+                    }
+                    let _ = request.respond(response);
+                    return;
+                }
+                Err(e) => {
+                    let _ = writeln!(std::io::stderr(), "cannot read site.dict: {e}");
+                }
+            }
+        }
+    }
+
     match docs_compiler::resolve_route(out, &url) {
-        Some(path) => match std::fs::read(&path) {
-            Ok(data) => {
-                let mime = docs_compiler::mime_for(&path);
-                let response = tiny_http::Response::from_data(data).with_status_code(200);
-                let _ = attach(request, response, mime);
+        Some(path) => {
+            let encoding = docs_compiler::pick_encoding(&accept, &path);
+            let source = encoding
+                .as_ref()
+                .map(|(_, p)| p)
+                .unwrap_or(&path)
+                .to_path_buf();
+            let mime = docs_compiler::mime_for(&path);
+            match std::fs::read(&source) {
+                Ok(data) => {
+                    let response = tiny_http::Response::from_data(data).with_status_code(200);
+                    let _ = attach(request, response, mime, encoding.map(|(t, _)| t));
+                }
+                Err(e) => {
+                    let _ = writeln!(std::io::stderr(), "cannot read {}: {e}", path.display());
+                    let response = tiny_http::Response::from_data(b"internal error".to_vec())
+                        .with_status_code(500);
+                    let _ = attach(request, response, "text/plain; charset=utf-8", None);
+                }
             }
-            Err(e) => {
-                let _ = writeln!(std::io::stderr(), "cannot read {}: {e}", path.display());
-                let response = tiny_http::Response::from_data(b"internal error".to_vec())
-                    .with_status_code(500);
-                let _ = attach(request, response, "text/plain; charset=utf-8");
-            }
-        },
+        }
         None => {
             let response =
                 tiny_http::Response::from_data(b"not found".to_vec()).with_status_code(404);
-            let _ = attach(request, response, "text/plain; charset=utf-8");
+            let _ = attach(request, response, "text/plain; charset=utf-8", None);
         }
     }
 }

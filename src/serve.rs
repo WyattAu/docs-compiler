@@ -17,6 +17,7 @@
 //! errors are collected per page, printed, and the site keeps serving
 //! the last good HTML (fail-loud, not fail-dead).
 
+use crate::compress::{self, Tools};
 use crate::seo::{self, SeoPage, SiteConfig};
 use crate::{compile, BuildContext};
 use std::io;
@@ -37,6 +38,14 @@ pub struct SiteReport {
     pub pages: Vec<SeoPage>,
     /// Whether a `site.toml` provided site-wide settings.
     pub configured: bool,
+    /// Artifacts written (pages, llms.txt, sitemap, robots) - the
+    /// precompression pass runs over exactly these.
+    pub artifacts: Vec<PathBuf>,
+    /// Compressed sidecars produced (`.gz`/`.br`/`.zst`/`.dcz` files).
+    pub compressed: usize,
+    /// Whether a shared zstd dictionary was trained and emitted
+    /// (`site.dict`, served with `Use-As-Dictionary`).
+    pub dictionary: bool,
 }
 
 impl SiteReport {
@@ -81,11 +90,68 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
     }
     if let Some(config) = &config {
         let page_refs: &[SeoPage] = &report.pages;
-        std::fs::write(out.join("llms.txt"), seo::llms_txt(config, page_refs))?;
-        std::fs::write(out.join("sitemap.xml"), seo::sitemap_xml(config, page_refs))?;
-        std::fs::write(out.join("robots.txt"), seo::robots_txt(config))?;
+        for (name, content) in [
+            ("llms.txt", seo::llms_txt(config, page_refs)),
+            ("sitemap.xml", seo::sitemap_xml(config, page_refs)),
+            ("robots.txt", seo::robots_txt(config)),
+        ] {
+            let path = out.join(name);
+            std::fs::write(&path, content)?;
+            report.artifacts.push(path);
+        }
     }
+    precompress(out, &mut report);
     Ok(report)
+}
+
+/// The precompression pass (Wave 2c.5): sidecars for every artifact,
+/// plus the shared zstd dictionary and `.dcz` page encodings when the
+/// site has enough pages to train on. Absent tools degrade gracefully
+/// (warning, not failure) - the estate's spawn-don't-link doctrine.
+fn precompress(out: &Path, report: &mut SiteReport) {
+    let tools = Tools::detect();
+    if !tools.any() {
+        report
+            .warnings
+            .push("no gzip/brotli/zstd on PATH: precompression skipped".into());
+        return;
+    }
+    let mut compressed = 0usize;
+    let artifacts = report.artifacts.clone();
+    for artifact in &artifacts {
+        match compress::sidecars(&tools, artifact) {
+            Ok(encodings) => compressed += encodings.len(),
+            Err(e) => report
+                .warnings
+                .push(format!("{}: compression failed: {e}", artifact.display())),
+        }
+    }
+    let dict_path = out.join("site.dict");
+    match compress::train_dictionary(&tools, &artifacts, &dict_path) {
+        Ok(true) => {
+            report.dictionary = true;
+            compressed += 1; // the dictionary itself is an artifact
+            for artifact in &artifacts {
+                if matches!(
+                    artifact.extension().and_then(|e| e.to_str()),
+                    Some("html") | Some("txt") | Some("xml")
+                ) && compress::dcz_sidecar(&tools, &dict_path, artifact).unwrap_or(false)
+                {
+                    compressed += 1;
+                }
+            }
+        }
+        Ok(false) => {
+            report.warnings.push(format!(
+                "shared dictionary skipped ({} artifacts: zstd trains on >= 8 samples)",
+                artifacts.len()
+            ));
+        }
+        Err(e) => report
+            .warnings
+            .push(format!("dictionary training failed: {e}")),
+    }
+    report.compressed = compressed;
 }
 
 /// Build one page: front-matter, compile, head, write, report.
@@ -177,6 +243,7 @@ fn build_one_page(
         return;
     }
     report.built.push(path.to_path_buf());
+    report.artifacts.push(target);
     report.pages.push(SeoPage {
         route,
         title,

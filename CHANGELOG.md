@@ -99,3 +99,22 @@ All notable changes to this project are documented in this file.
   missing description - the floor's guidance, not errors) and `pages`
   (the SEO view of every built route).
 - `serde_json` joins the floor (JSON-LD emission).
+
+## [0.5.0] - 2026-11-14
+
+### Added
+
+- **Precompression (Wave 2c.5):** `compile_site` emits compressed
+  sidecars for every artifact - `.gz` (gzip -9), `.br` (brotli -q 11),
+  `.zst` (zstd -19) - with tools spawned once per build and absent
+  tools degrading to a report warning (spawn-don't-link).
+- **Shared-dictionary serving (RFC 9842):** when zstd is present and
+  the site has >= 8 artifacts, a 16 KB dictionary is trained across the
+  site's own pages (`site.dict`, served with `Use-As-Dictionary:
+  match="/*"`), and every html/txt/xml artifact gains a `.dcz` encoding
+  decoded against it. Measured on this estate's islands: the smallest
+  chunk drops 483 gzip bytes to 264.
+- The dev server negotiates `Accept-Encoding` (token presence; q-value
+  arithmetic is a documented non-feature): dcz > br > zstd > gz, with
+  `Vary: Accept-Encoding` on negotiated responses.
+- `SiteReport` gains `artifacts`, `compressed`, `dictionary`.
