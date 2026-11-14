@@ -118,3 +118,12 @@ All notable changes to this project are documented in this file.
   arithmetic is a documented non-feature): dcz > br > zstd > gz, with
   `Vary: Accept-Encoding` on negotiated responses.
 - `SiteReport` gains `artifacts`, `compressed`, `dictionary`.
+
+## [0.5.1] - 2026-11-14
+
+### Added
+
+- `site.toml` gains `stylesheet` and `island_shim`: every page head
+  emits the islands' stylesheet link and the `<docs-island>` shim
+  module script. The static shell wires its client in config, not
+  markup.

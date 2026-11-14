@@ -42,6 +42,12 @@ pub struct SiteConfig {
     /// AI-crawler policy, recorded in robots.txt: `"allow"` (default),
     /// `"block-training"`, `"block-all"`.
     pub ai_crawlers: String,
+    /// Stylesheet URL emitted as a `<link rel="stylesheet">` in every
+    /// page head (e.g. the islands' Tailwind build).
+    pub stylesheet: Option<String>,
+    /// The island shim module URL, emitted as a deferred module script
+    /// in every page head (registers `<docs-island>`).
+    pub island_shim: Option<String>,
 }
 
 impl SiteConfig {
@@ -53,6 +59,8 @@ impl SiteConfig {
         let mut site_title = String::from("Documentation");
         let mut author = String::new();
         let mut ai_crawlers = String::from("allow");
+        let mut stylesheet = None;
+        let mut island_shim = None;
         for line in text.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -67,6 +75,8 @@ impl SiteConfig {
                 "site_title" => site_title = value,
                 "author" => author = value,
                 "ai_crawlers" => ai_crawlers = value,
+                "stylesheet" => stylesheet = Some(value),
+                "island_shim" => island_shim = Some(value),
                 _ => {}
             }
         }
@@ -75,6 +85,8 @@ impl SiteConfig {
             site_title,
             author,
             ai_crawlers,
+            stylesheet,
+            island_shim,
         })
     }
 }
@@ -240,6 +252,26 @@ pub fn document(
             )
         })
         .unwrap_or_default();
+    // Site-level head wiring (Wave 2c.5): the islands' stylesheet and
+    // the shim module that registers <docs-island>.
+    let head_extra = config
+        .map(|c| {
+            let mut extra = String::new();
+            if let Some(css) = &c.stylesheet {
+                extra.push_str(&format!(
+                    "<link rel=\"stylesheet\" href=\"{}\">",
+                    escape_attr(css)
+                ));
+            }
+            if let Some(shim) = &c.island_shim {
+                extra.push_str(&format!(
+                    "<script type=\"module\" src=\"{}\"></script>",
+                    escape_attr(shim)
+                ));
+            }
+            extra
+        })
+        .unwrap_or_default();
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
@@ -251,7 +283,7 @@ pub fn document(
 <meta name=\"twitter:card\" content=\"summary\">\
 <meta name=\"twitter:title\" content=\"{t}\">\
 <meta name=\"twitter:description\" content=\"{d}\">\
-{json_ld_tag}</head><body>{body}</body></html>",
+{head_extra}{json_ld_tag}</head><body>{body}</body></html>",
         t = escape_attr(title),
         d = escape_attr(description)
     )

@@ -27,6 +27,8 @@ fn sample_config() -> SiteConfig {
         site_title: "Estate Docs".into(),
         author: "Wyatt".into(),
         ai_crawlers: "allow".into(),
+        stylesheet: Some("/_assets/islands.css".into()),
+        island_shim: Some("/_assets/islands/island.mjs".into()),
     }
 }
 
@@ -251,5 +253,32 @@ fn robots_policies_and_missing_site_config() {
     assert!(
         !sitemap.contains("lastmod"),
         "no date, no lastmod: {sitemap}"
+    );
+}
+
+#[test]
+fn site_config_wires_stylesheet_and_island_shim_into_every_head() {
+    let config = sample_config();
+    let doc = document(
+        "<h1>x</h1>",
+        &PageMeta::default(),
+        "T",
+        "d",
+        "t.html",
+        Some(&config),
+    );
+    assert!(
+        doc.contains("<link rel=\"stylesheet\" href=\"/_assets/islands.css\">"),
+        "{doc}"
+    );
+    assert!(
+        doc.contains("<script type=\"module\" src=\"/_assets/islands/island.mjs\"></script>"),
+        "the shim registers <docs-island>: {doc}"
+    );
+    // No site config: no site-level head wiring.
+    let bare = document("<h1>x</h1>", &PageMeta::default(), "T", "d", "t.html", None);
+    assert!(
+        !bare.contains("stylesheet") && !bare.contains("island.mjs"),
+        "{bare}"
     );
 }
