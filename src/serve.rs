@@ -321,7 +321,10 @@ fn nav_groups(pages: &[PageBuild], active_route: &str) -> Vec<NavGroup> {
         let segs: Vec<&str> = page.route.split('/').collect();
         let key = match (segs.first(), segs.get(1)) {
             (Some(top), Some(second)) if second.contains('.') => (*top).to_string(),
-            (Some(top), Some(second)) => format!("{top}/{stem}", stem = second.split('.').next().unwrap_or(second)),
+            (Some(top), Some(second)) => format!(
+                "{top}/{stem}",
+                stem = second.split('.').next().unwrap_or(second)
+            ),
             _ => "pages".to_string(),
         };
         if !groups.contains_key(&key) {
