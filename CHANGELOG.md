@@ -156,3 +156,10 @@ All notable changes to this project are documented in this file.
 
 - Dependency floor: `docs-search = "0.2"` (the estate's own L0 crate -
   the four capability slices finally meet in one build artifact).
+
+### Fixed (0.6.1)
+
+- Sidebar nav groups grouped by file stem ("guides/one.html" ->
+  group "guides/one") instead of directory. Group keys now match the
+  page's directory: depth-2 routes under their top segment, deeper
+  routes under the first two segments.

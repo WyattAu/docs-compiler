@@ -101,5 +101,5 @@ fn mime_matches_the_site_surface() {
     );
     assert_eq!(mime_for(Path::new("mod.wasm")), "application/wasm");
     assert_eq!(mime_for(Path::new("logo.svg")), "image/svg+xml");
-    assert_eq!(mime_for(Path::new("data.bin")), "text/plain; charset=utf-8");
+    assert_eq!(mime_for(Path::new("data.bin")), "application/octet-stream");
 }

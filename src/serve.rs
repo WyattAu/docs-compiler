@@ -314,15 +314,14 @@ fn nav_groups(pages: &[PageBuild], active_route: &str) -> Vec<NavGroup> {
         if page.route == "index.html" {
             continue;
         }
-        // Group key: the first two route segments ("content/TextAnimations",
-        // "extras/osint") so categories stay separate; the label is the
-        // key's last segment.
+        // Group key: the directory the page lives in. Depth-2 routes
+        // ("guides/one.html") group under their top segment; deeper
+        // routes group under the first two ("extras/osint"), so
+        // categories stay separate.
         let segs: Vec<&str> = page.route.split('/').collect();
         let key = match (segs.first(), segs.get(1)) {
-            (Some(top), Some(second)) => {
-                let stem = second.split('.').next().unwrap_or(second);
-                format!("{top}/{stem}")
-            }
+            (Some(top), Some(second)) if second.contains('.') => (*top).to_string(),
+            (Some(top), Some(second)) => format!("{top}/{stem}", stem = second.split('.').next().unwrap_or(second)),
             _ => "pages".to_string(),
         };
         if !groups.contains_key(&key) {
