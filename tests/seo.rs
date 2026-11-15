@@ -29,6 +29,7 @@ fn sample_config() -> SiteConfig {
         ai_crawlers: "allow".into(),
         stylesheet: Some("/_assets/islands.css".into()),
         island_shim: Some("/_assets/islands/island.mjs".into()),
+        search_island: Some("/_assets/islands/doc-search.js".into()),
     }
 }
 

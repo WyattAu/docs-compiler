@@ -48,6 +48,9 @@ pub struct SiteConfig {
     /// The island shim module URL, emitted as a deferred module script
     /// in every page head (registers `<docs-island>`).
     pub island_shim: Option<String>,
+    /// The search island chunk URL, emitted as a search trigger in the
+    /// header (props point at `/search.json`).
+    pub search_island: Option<String>,
 }
 
 impl SiteConfig {
@@ -61,6 +64,7 @@ impl SiteConfig {
         let mut ai_crawlers = String::from("allow");
         let mut stylesheet = None;
         let mut island_shim = None;
+        let mut search_island = None;
         for line in text.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -77,6 +81,7 @@ impl SiteConfig {
                 "ai_crawlers" => ai_crawlers = value,
                 "stylesheet" => stylesheet = Some(value),
                 "island_shim" => island_shim = Some(value),
+                "search_island" => search_island = Some(value),
                 _ => {}
             }
         }
@@ -87,6 +92,7 @@ impl SiteConfig {
             ai_crawlers,
             stylesheet,
             island_shim,
+            search_island,
         })
     }
 }
@@ -161,6 +167,14 @@ pub fn first_paragraph(body: &str) -> Option<String> {
         return None;
     }
     Some(truncate_words(&text, 155))
+}
+
+/// Strip all tags from rendered HTML and collapse whitespace: the
+/// plain-text view used for search corpora.
+#[must_use]
+pub fn plain_text(body: &str) -> String {
+    let text = strip_tags(body);
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn strip_tags(html: &str) -> String {

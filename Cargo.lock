@@ -529,11 +529,12 @@ dependencies = [
 
 [[package]]
 name = "docs-compiler"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "clap",
  "docs-core",
  "docs-proof",
+ "docs-search",
  "docs-symbols",
  "docs-witness",
  "notify",
@@ -564,6 +565,16 @@ checksum = "0c803cf3769465cf5464db724e2b9599350fa7f28f2eadf8d0ebb63300f93a39"
 dependencies = [
  "serde",
  "sha2",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "docs-search"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f803e80d6887b0f13051a285dce9a72d18057489028844c74482c6160ffa1f65"
+dependencies = [
+ "fst",
  "thiserror 2.0.21",
 ]
 
@@ -713,6 +724,12 @@ dependencies = [
  "rustix 1.1.6",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "fst"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ab85b9b05e3978cc9a9cf8fea7f01b494e1a09ed3037e16ba39edc7a29eb61a"
 
 [[package]]
 name = "futures"

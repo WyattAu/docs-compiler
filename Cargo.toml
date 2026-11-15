@@ -1,6 +1,6 @@
 [package]
 name = "docs-compiler"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Wyatt Au <wyatt_au@protonmail.com>"]
@@ -36,6 +36,8 @@ tiny_http = "0.12"
 notify = "8"
 # SEO (Wave 2c): JSON-LD emission for the document wrapper.
 serde_json = "1"
+# Site search (Wave 2d): the binary index emitted alongside search.json.
+docs-search = "0.2"
 
 [dev-dependencies]
 tempfile = "3"

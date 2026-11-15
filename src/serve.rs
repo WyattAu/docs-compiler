@@ -4,12 +4,12 @@
 //! thin wrappers in the binary; everything with logic lives here and is
 //! unit-tested.
 //!
-//! Since Wave 2c every page compiles to a FULL HTML document carrying
-//! the estate-seo floor's head artifacts (title, description, canonical,
-//! Open Graph, JSON-LD); a `site.toml` with `base_url` additionally
-//! emits `llms.txt`, `sitemap.xml`, and `robots.txt` (with the
-//! AI-crawler policy as a recorded decision). Per-page inputs come from
-//! `---` front-matter (`title`, `description`, `slug`, `date`).
+//! Since Wave 2d the site builder owns the whole tree: pages become
+//! full documents wrapped in the site chrome (header, sidebar nav tree
+//! built from the directory structure, per-page TOC, prev/next pager,
+//! theme toggle), `src/assets/**` is mirrored to `out/_assets/**`, and
+//! a search corpus (`search.json`, for the solid-fx doc-search island)
+//! plus a `docs-search` binary index (`search.bin`) are emitted.
 //!
 //! Design note (plan ledger W2-3): the server lives in docs-compiler,
 //! not docs-core - docs-core is L2 with no web framework, and serving
@@ -17,7 +17,8 @@
 //! errors are collected per page, printed, and the site keeps serving
 //! the last good HTML (fail-loud, not fail-dead).
 
-use crate::compress::{self, Tools};
+use crate::chrome::{self, Chrome, NavGroup};
+use crate::compress::{self};
 use crate::seo::{self, SeoPage, SiteConfig};
 use crate::{compile, BuildContext};
 use std::io;
@@ -38,14 +39,16 @@ pub struct SiteReport {
     pub pages: Vec<SeoPage>,
     /// Whether a `site.toml` provided site-wide settings.
     pub configured: bool,
-    /// Artifacts written (pages, llms.txt, sitemap, robots) - the
-    /// precompression pass runs over exactly these.
+    /// Artifacts written (pages, search corpus/index, llms.txt,
+    /// sitemap, robots) - the precompression pass runs over these.
     pub artifacts: Vec<PathBuf>,
     /// Compressed sidecars produced (`.gz`/`.br`/`.zst`/`.dcz` files).
     pub compressed: usize,
     /// Whether a shared zstd dictionary was trained and emitted
     /// (`site.dict`, served with `Use-As-Dictionary`).
     pub dictionary: bool,
+    /// Asset files copied from `src/assets/**`.
+    pub assets_copied: usize,
 }
 
 impl SiteReport {
@@ -55,23 +58,42 @@ impl SiteReport {
     }
 }
 
+/// One rendered page, ready for chrome wrapping and writing.
+struct PageBuild {
+    source: PathBuf,
+    route: String,
+    title: String,
+    description: String,
+    date: Option<String>,
+    meta: seo::PageMeta,
+    body: String,
+    /// Plain text of the body - the search corpus input.
+    text: String,
+}
+
 /// Compile every `.md` under `src` (recursive, hidden dirs skipped) into
-/// the mirrored `.html` layout under `out`, as full documents with the
-/// SEO head. Front-matter (`title`, `description`, `slug`, `date`)
-/// overrides the title/description/route/date fallbacks. Directive roots
-/// are each page's own directory, matching the single-file CLI's
-/// default. One bad page never blocks the others: its error lands in
-/// the report. A `site.toml` with `base_url` additionally emits
-/// `llms.txt`, `sitemap.xml`, and `robots.txt` into `out`.
+/// the mirrored `.html` layout under `out`, wrapped in the site chrome.
+/// Front-matter (`title`, `description`, `slug`, `date`) overrides the
+/// title/description/route/date fallbacks. Directive roots are each
+/// page's own directory, matching the single-file CLI's default.
+///
+/// A `site.toml` with `base_url` additionally emits `llms.txt`,
+/// `sitemap.xml`, and `robots.txt`; `src/assets/**` is mirrored to
+/// `out/_assets/**`; and `search.json` + `search.bin` (a docs-search
+/// index) are emitted for client-side search.
 ///
 /// # Errors
 /// I/O failures on the tree walk or output creation.
 pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
     let config = SiteConfig::load(src);
+    let tools = compress::Tools::detect();
     let mut report = SiteReport {
         configured: config.is_some(),
         ..SiteReport::default()
     };
+
+    // Pass 1: render every page body and collect its metadata.
+    let mut pages: Vec<PageBuild> = Vec::new();
     let mut stack = vec![src.to_path_buf()];
     while let Some(dir) = stack.pop() {
         for entry in std::fs::read_dir(&dir)? {
@@ -84,10 +106,83 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
                     stack.push(path);
                 }
             } else if name.ends_with(".md") {
-                build_one_page(src, out, &path, config.as_ref(), &mut report);
+                build_page(src, &path, &mut report, &mut pages);
             }
         }
     }
+    pages.sort_by(|a, b| a.route.cmp(&b.route));
+
+    // Site assets: src/assets/** mirrors to out/_assets/** (the island
+    // base URL space), and the chrome stylesheet is emitted first so
+    // every wrapped page can link it.
+    let chrome_css = out.join("_assets").join("layout.css");
+    std::fs::create_dir_all(
+        chrome_css
+            .parent()
+            .map_or_else(|| Path::new("."), Path::new),
+    )?;
+    std::fs::write(&chrome_css, chrome::LAYOUT_CSS)?;
+    report.artifacts.push(chrome_css);
+    let assets_src = src.join("assets");
+    if assets_src.is_dir() {
+        report.assets_copied = copy_tree(&assets_src, &out.join("_assets"))?;
+    }
+
+    // Pass 2: chrome-wrap and write every page, in route order. The
+    // search corpus grows alongside (title/url/description/body JSON for
+    // the doc-search island, plus the docs-search binary index).
+    let mut corpus = String::from("[\n");
+    let mut index = docs_search::IndexBuilder::new();
+    for page in &pages {
+        let chrome = Chrome {
+            nav: nav_groups(&pages, &page.route),
+            active_route: page.route.clone(),
+            toc: chrome::extract_toc(&page.body),
+            prev: prev_of(&pages, &page.route),
+            next: next_of(&pages, &page.route),
+            search_island: config.as_ref().and_then(|c| c.search_island.clone()),
+            search_index: config.as_ref().map(|_| "/search.json".into()),
+        };
+        let doc = seo::document(
+            &page.body,
+            &page.meta,
+            &page.title,
+            &page.description,
+            &page.route,
+            config.as_ref(),
+        );
+        let site_title = config
+            .as_ref()
+            .map_or_else(|| "Docs".to_string(), |c| c.site_title.clone());
+        let with_chrome = chrome::page(&doc, &site_title, &chrome);
+        let target = out.join(&page.route);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&target, with_chrome)?;
+        report.built.push(page.source.clone());
+        report.artifacts.push(target);
+        report.pages.push(SeoPage {
+            route: page.route.clone(),
+            title: page.title.clone(),
+            description: page.description.clone(),
+            date: page.date.clone(),
+        });
+
+        corpus.push_str(&format!(
+            "{{\"title\":{},\"url\":{},\"description\":{},\"body\":{}}},\n",
+            serde_json::to_string(&page.title).unwrap_or_else(|_| "\"\"".into()),
+            serde_json::to_string(&format!("/{}", page.route)).unwrap_or_else(|_| "\"\"".into()),
+            serde_json::to_string(&page.description).unwrap_or_else(|_| "\"\"".into()),
+            serde_json::to_string(&page.text).unwrap_or_else(|_| "\"\"".into()),
+        ));
+        let _ = index.add_doc(&format!(
+            "{} {} {}",
+            page.title, page.description, page.text
+        ));
+    }
+
+    // SEO artifacts.
     if let Some(config) = &config {
         let page_refs: &[SeoPage] = &report.pages;
         for (name, content) in [
@@ -100,68 +195,33 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
             report.artifacts.push(path);
         }
     }
-    precompress(out, &mut report);
+
+    // Search artifacts: the JSON corpus for the doc-search island and a
+    // docs-search binary index for the future in-browser reader.
+    if !report.pages.is_empty() {
+        corpus.push_str("]\n");
+        let corpus_path = out.join("search.json");
+        std::fs::write(&corpus_path, corpus)?;
+        report.artifacts.push(corpus_path);
+        let index_path = out.join("search.bin");
+        match index.build() {
+            Ok(bytes) => {
+                std::fs::write(&index_path, bytes)?;
+                report.artifacts.push(index_path);
+            }
+            Err(e) => report
+                .warnings
+                .push(format!("search index build failed: {e}")),
+        }
+    }
+
+    precompress(out, &tools, &mut report);
     Ok(report)
 }
 
-/// The precompression pass (Wave 2c.5): sidecars for every artifact,
-/// plus the shared zstd dictionary and `.dcz` page encodings when the
-/// site has enough pages to train on. Absent tools degrade gracefully
-/// (warning, not failure) - the estate's spawn-don't-link doctrine.
-fn precompress(out: &Path, report: &mut SiteReport) {
-    let tools = Tools::detect();
-    if !tools.any() {
-        report
-            .warnings
-            .push("no gzip/brotli/zstd on PATH: precompression skipped".into());
-        return;
-    }
-    let mut compressed = 0usize;
-    let artifacts = report.artifacts.clone();
-    for artifact in &artifacts {
-        match compress::sidecars(&tools, artifact) {
-            Ok(encodings) => compressed += encodings.len(),
-            Err(e) => report
-                .warnings
-                .push(format!("{}: compression failed: {e}", artifact.display())),
-        }
-    }
-    let dict_path = out.join("site.dict");
-    match compress::train_dictionary(&tools, &artifacts, &dict_path) {
-        Ok(true) => {
-            report.dictionary = true;
-            compressed += 1; // the dictionary itself is an artifact
-            for artifact in &artifacts {
-                if matches!(
-                    artifact.extension().and_then(|e| e.to_str()),
-                    Some("html") | Some("txt") | Some("xml")
-                ) && compress::dcz_sidecar(&tools, &dict_path, artifact).unwrap_or(false)
-                {
-                    compressed += 1;
-                }
-            }
-        }
-        Ok(false) => {
-            report.warnings.push(format!(
-                "shared dictionary skipped ({} artifacts: zstd trains on >= 8 samples)",
-                artifacts.len()
-            ));
-        }
-        Err(e) => report
-            .warnings
-            .push(format!("dictionary training failed: {e}")),
-    }
-    report.compressed = compressed;
-}
-
-/// Build one page: front-matter, compile, head, write, report.
-fn build_one_page(
-    src: &Path,
-    out: &Path,
-    path: &Path,
-    config: Option<&SiteConfig>,
-    report: &mut SiteReport,
-) {
+/// Build one page's metadata and body into the pending list. All
+/// failures land in the report - one bad page never blocks the site.
+fn build_page(src: &Path, path: &Path, report: &mut SiteReport, pages: &mut Vec<PageBuild>) {
     let rel = match path.strip_prefix(src) {
         Ok(r) => r.to_path_buf(),
         Err(_) => path.to_path_buf(),
@@ -230,26 +290,164 @@ fn build_one_page(
         ));
     }
 
-    let document = seo::document(&body, &meta, &title, &description, &route, config);
-    let target = out.join(&route);
-    if let Some(parent) = target.parent() {
-        if let Err(e) = std::fs::create_dir_all(parent) {
-            report.errors.push((path.to_path_buf(), e.to_string()));
-            return;
-        }
-    }
-    if let Err(e) = std::fs::write(&target, document) {
-        report.errors.push((path.to_path_buf(), e.to_string()));
-        return;
-    }
-    report.built.push(path.to_path_buf());
-    report.artifacts.push(target);
-    report.pages.push(SeoPage {
+    pages.push(PageBuild {
+        source: path.to_path_buf(),
         route,
         title,
         description,
-        date: meta.date,
+        date: meta.date.clone(),
+        meta,
+        text: crate::seo::plain_text(&body),
+        body,
     });
+}
+
+/// Sidebar nav groups: group pages by their first route segment, label
+/// groups by the second segment when present ("content/TextAnimations"
+/// -> "TextAnimations"). The homepage stays out - the header brand
+/// links it.
+fn nav_groups(pages: &[PageBuild], active_route: &str) -> Vec<NavGroup> {
+    let mut order: Vec<String> = Vec::new();
+    let mut groups: std::collections::HashMap<String, Vec<(String, String)>> =
+        std::collections::HashMap::new();
+    for page in pages {
+        if page.route == "index.html" {
+            continue;
+        }
+        // Group key: the first two route segments ("content/TextAnimations",
+        // "extras/osint") so categories stay separate; the label is the
+        // key's last segment.
+        let segs: Vec<&str> = page.route.split('/').collect();
+        let key = match (segs.first(), segs.get(1)) {
+            (Some(top), Some(second)) => {
+                let stem = second.split('.').next().unwrap_or(second);
+                format!("{top}/{stem}")
+            }
+            _ => "pages".to_string(),
+        };
+        if !groups.contains_key(&key) {
+            order.push(key.clone());
+        }
+        groups
+            .entry(key)
+            .or_default()
+            .push((page.route.clone(), page.title.clone()));
+    }
+    let mut out = Vec::new();
+    for key in order {
+        let items = groups.remove(&key).unwrap_or_default();
+        let label = key.rsplit('/').next().unwrap_or(&key).to_string();
+        let active = active_route.starts_with(&format!("{key}/"));
+        out.push(NavGroup {
+            label: display_label(&key, &label),
+            active,
+            items,
+        });
+    }
+    out
+}
+
+/// Display label: capitalize the group's last segment for the sidebar.
+fn display_label(key: &str, label: &str) -> String {
+    let mut chars = label.chars();
+    match chars.next() {
+        Some(first) => {
+            let mut out = String::from(key);
+            out.clear();
+            out.push(first.to_ascii_uppercase());
+            out.push_str(chars.as_str());
+            out
+        }
+        None => key.to_string(),
+    }
+}
+
+fn prev_of(pages: &[PageBuild], route: &str) -> Option<(String, String)> {
+    let pos = pages.iter().position(|p| p.route == route)?;
+    let previous = pos.checked_sub(1)?;
+    pages
+        .get(previous)
+        .map(|p| (p.route.clone(), p.title.clone()))
+}
+
+fn next_of(pages: &[PageBuild], route: &str) -> Option<(String, String)> {
+    let pos = pages.iter().position(|p| p.route == route)?;
+    pages
+        .get(pos + 1)
+        .map(|p| (p.route.clone(), p.title.clone()))
+}
+
+/// Mirror-copy a directory tree; returns the file count.
+fn copy_tree(from: &Path, to: &Path) -> io::Result<usize> {
+    let mut count = 0usize;
+    let mut stack = vec![from.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else {
+                let rel = path.strip_prefix(from).unwrap_or(&path).to_path_buf();
+                let dest = to.join(rel);
+                if let Some(parent) = dest.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::copy(&path, &dest)?;
+                count += 1;
+            }
+        }
+    }
+    Ok(count)
+}
+
+/// The precompression pass (Wave 2c.5): sidecars for every text
+/// artifact, plus the shared zstd dictionary and `.dcz` encodings when
+/// the site has enough pages. Absent tools degrade gracefully (warning,
+/// not failure) - the estate's spawn-don't-link doctrine.
+fn precompress(out: &Path, tools: &compress::Tools, report: &mut SiteReport) {
+    if !tools.any() {
+        report
+            .warnings
+            .push("no gzip/brotli/zstd on PATH: precompression skipped".into());
+        return;
+    }
+    let mut compressed = 0usize;
+    let artifacts = report.artifacts.clone();
+    for artifact in &artifacts {
+        match compress::sidecars(tools, artifact) {
+            Ok(encodings) => compressed += encodings.len(),
+            Err(e) => report
+                .warnings
+                .push(format!("{}: compression failed: {e}", artifact.display())),
+        }
+    }
+    let dict_path = out.join("site.dict");
+    match compress::train_dictionary(tools, &artifacts, &dict_path) {
+        Ok(true) => {
+            report.dictionary = true;
+            compressed += 1;
+            for artifact in &artifacts {
+                if matches!(
+                    artifact.extension().and_then(|e| e.to_str()),
+                    Some("html") | Some("txt") | Some("xml") | Some("json")
+                ) && compress::dcz_sidecar(tools, &dict_path, artifact).unwrap_or(false)
+                {
+                    compressed += 1;
+                }
+            }
+        }
+        Ok(false) => {
+            report.warnings.push(format!(
+                "shared dictionary skipped ({} artifacts: zstd trains on >= 8 samples)",
+                artifacts.len()
+            ));
+        }
+        Err(e) => report
+            .warnings
+            .push(format!("dictionary training failed: {e}")),
+    }
+    report.compressed = compressed;
 }
 
 /// Map a request path to a file under `out`: empty → `index.html`;
@@ -329,6 +527,7 @@ pub fn mime_for(path: &Path) -> &'static str {
         "md" => "text/markdown; charset=utf-8",
         "xml" => "application/xml",
         "txt" => "text/plain; charset=utf-8",
+        "bin" => "application/octet-stream",
         "woff2" => "font/woff2",
         _ => "text/plain; charset=utf-8",
     }

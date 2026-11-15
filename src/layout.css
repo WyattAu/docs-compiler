@@ -1,0 +1,224 @@
+/* docs-compiler site chrome (Wave 2d): layout + theme for generated
+ * docs sites. Dark by default; `html[data-theme="light"]` flips the
+ * palette. The theme toggle button is an inline-SVG-less control: the
+ * sun/moon glyph is drawn with two border-radius tricks to keep this
+ * file the only chrome asset. */
+
+:root, html[data-theme="dark"] {
+  --bg: #0b0f19;
+  --bg-raised: #111827;
+  --text: #d1d5db;
+  --text-strong: #f9fafb;
+  --text-muted: #6b7280;
+  --border: #1f2937;
+  --accent: #22d3ee;
+  --accent-soft: rgba(34, 211, 238, 0.14);
+}
+html[data-theme="light"] {
+  --bg: #f9fafb;
+  --bg-raised: #ffffff;
+  --text: #374151;
+  --text-strong: #111827;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --accent: #0891b2;
+  --accent-soft: rgba(8, 145, 178, 0.12);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.7 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 3.25rem;
+  padding: 0 1.25rem;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-weight: 650;
+  color: var(--text-strong);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+/* Theme toggle: a small circle glyph; the filled state reads as "dark". */
+#theme-toggle {
+  margin-left: auto;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+#theme-toggle::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  background: var(--text-strong);
+  transform: translateX(35%);
+  transition: transform 0.15s ease;
+}
+html[data-theme="light"] #theme-toggle::after { transform: translateX(0); }
+
+/* Layout grid: sidebar | content | toc */
+body { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
+.content { display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1200px) {
+  .content { grid-template-columns: minmax(0, 1fr) 220px; }
+}
+
+/* Sidebar */
+.sidebar {
+  position: sticky;
+  top: 3.25rem;
+  height: calc(100vh - 3.25rem);
+  overflow-y: auto;
+  padding: 1rem 0.75rem;
+  border-right: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.nav-group summary {
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  list-style: none;
+}
+.nav-group summary::-webkit-details-marker { display: none; }
+.nav-group summary::before { content: "▸ "; color: var(--text-muted); }
+.nav-group[open] summary::before { content: "▾ "; }
+.nav-group.active summary { color: var(--accent); }
+.nav-group a {
+  display: block;
+  padding: 0.25rem 0.5rem 0.25rem 1.4rem;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.nav-group a:hover { background: var(--accent-soft); }
+.nav-group a.active { color: var(--accent); background: var(--accent-soft); }
+
+/* Content column */
+.page main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 2rem 3rem;
+}
+.page main h1, .page main h2, .page main h3 {
+  color: var(--text-strong);
+  letter-spacing: -0.015em;
+  scroll-margin-top: 4rem;
+}
+.page main h1 { font-size: 2rem; margin: 0 0 1.25rem; }
+.page main h2 { font-size: 1.4rem; margin-top: 2.25rem; }
+.page main h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+.page main a { color: var(--accent); }
+.page main code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.page main pre {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+.page main pre code { background: none; border: none; padding: 0; }
+.page main img, .page main svg { max-width: 100%; height: auto; }
+.page main blockquote {
+  margin: 1rem 0;
+  padding: 0.25rem 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+}
+.page main table { border-collapse: collapse; width: 100%; }
+.page main th, .page main td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+}
+
+/* TOC */
+.toc {
+  display: none;
+  position: sticky;
+  top: 3.25rem;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: 1rem;
+  font-size: 0.85rem;
+}
+@media (min-width: 1200px) { .toc { display: block; } }
+.toc-title {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.toc a {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.15rem 0;
+}
+.toc a:hover { color: var(--accent); }
+.toc a.toc-l3 { padding-left: 1rem; color: var(--text-muted); }
+
+/* Prev/next pager */
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 3rem;
+  max-width: 46rem;
+  padding: 0 2rem;
+}
+.pager a, .pager span:empty {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  text-decoration: none;
+  min-width: 10rem;
+}
+.pager a:hover { border-color: var(--accent); }
+.pager .pager-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.pager .pager-title { color: var(--accent); font-size: 0.9rem; }
+.pager span:empty { visibility: hidden; }
+
+/* Narrow screens: sidebar collapses to a top block. */
+@media (max-width: 900px) {
+  body { display: block; }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}

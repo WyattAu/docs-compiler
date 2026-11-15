@@ -127,3 +127,32 @@ All notable changes to this project are documented in this file.
   emits the islands' stylesheet link and the `<docs-island>` shim
   module script. The static shell wires its client in config, not
   markup.
+
+## [0.6.0] - 2026-11-15
+
+### Added
+
+- **Site chrome (Wave 2d):** every page wraps in a full layout -
+  header with site brand, sidebar nav tree built from the directory
+  structure (active page + open group marked), per-page TOC from the
+  anchored h2/h3 headings, prev/next pager, and a persisted theme
+  toggle (one five-line inline script; everything else dynamic rides
+  islands). `chrome::page` performs exact-markup surgery on the
+  emitted document - no new templating language.
+- **Site assets:** `src/assets/**` mirrors to `out/_assets/**` (the
+  islands URL space), and the chrome stylesheet is emitted as
+  `/_assets/layout.css` and linked automatically.
+- **Search (Wave 2d):** `search.json` (title/url/description/body per
+  page, consumed by the solid-fx doc-search island) and `search.bin`
+  (a docs-search binary index for the future in-browser reader).
+- `site.toml` gains `search_island` (chunk URL for the header search
+  trigger island); `SiteConfig` carries `stylesheet`/`island_shim`/
+  `search_island` into every page head.
+- `HeadingOutline`-style audits get first-class support: heading
+  anchor ids now come from docs-core 0.3.0, and `chrome::extract_toc`
+  reads the anchored h2/h3 set from any rendered body.
+
+### Changed
+
+- Dependency floor: `docs-search = "0.2"` (the estate's own L0 crate -
+  the four capability slices finally meet in one build artifact).

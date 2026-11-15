@@ -30,6 +30,7 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
+mod chrome;
 mod compress;
 mod d2;
 mod directives;
@@ -39,6 +40,9 @@ mod lean;
 mod seo;
 mod serve;
 
+pub use chrome::{
+    extract_toc, layout_css as chrome_layout_css, page as chrome_page, Chrome, NavGroup, TocEntry,
+};
 pub use compress::{ext_token, pick_encoding, sidecar_path, Tools};
 pub use directives::{resolve, BuildContext};
 pub use error::CompilerError;
