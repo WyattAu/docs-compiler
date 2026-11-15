@@ -547,9 +547,9 @@ dependencies = [
 
 [[package]]
 name = "docs-core"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4858c3f33198de2f2c79333b6275fb21beb758432790b5efac017ec39686c5b"
+checksum = "17313766987efd0800dbf9b6c0004c02690aa0d117afe17cadc45cc847132d1f"
 dependencies = [
  "ammonia",
  "latex2mathml",

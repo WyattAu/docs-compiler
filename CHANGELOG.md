@@ -163,3 +163,10 @@ All notable changes to this project are documented in this file.
   group "guides/one") instead of directory. Group keys now match the
   page's directory: depth-2 routes under their top segment, deeper
   routes under the first two segments.
+
+### Fixed (0.6.2)
+
+- `docs-core` requirement moved to 0.3: heading anchor ids (0.3.0's
+  feature) now reach the chrome TOC. Sidebar nav groups also key on the
+  page's directory (depth-2 routes group by top segment; deeper routes
+  by the first two).
