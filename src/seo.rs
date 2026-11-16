@@ -190,6 +190,19 @@ pub fn plain_text(body: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Prefix a site-relative URL with the configured base path. Values
+/// starting with a scheme (https://, http://) pass through verbatim
+/// (external URLs, CDN assets).
+fn site_url(base_path: &str, value: &str) -> String {
+    if value.starts_with("https://") || value.starts_with("http://") || base_path.is_empty() {
+        value.to_string()
+    } else if value.starts_with('/') {
+        format!("{base_path}{value}")
+    } else {
+        format!("{base_path}/{value}")
+    }
+}
+
 fn strip_tags(html: &str) -> String {
     let mut out = String::with_capacity(html.len());
     let mut in_tag = false;
@@ -289,6 +302,7 @@ pub fn document(
             )
         })
         .unwrap_or_default();
+    let _ = &og_image_tag;
     let feed_link = config
         .map(|c| {
             format!(
@@ -320,13 +334,13 @@ pub fn document(
             if let Some(css) = &c.stylesheet {
                 extra.push_str(&format!(
                     "<link rel=\"stylesheet\" href=\"{}\">",
-                    escape_attr(css)
+                    escape_attr(&site_url(&c.base_path, css))
                 ));
             }
             if let Some(shim) = &c.island_shim {
                 extra.push_str(&format!(
                     "<script type=\"module\" src=\"{}\"></script>",
-                    escape_attr(shim)
+                    escape_attr(&site_url(&c.base_path, shim))
                 ));
             }
             extra

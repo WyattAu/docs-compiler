@@ -200,3 +200,10 @@ All notable changes to this project are documented in this file.
 - Dependency floor: `docs-search = "0.2"` (the estate's own L0) — the
   search corpus now also exists as a binary FST index (`search.bin`)
   alongside the JSON corpus, closing the four-slice loop in one build.
+
+### Fixed (0.7.1)
+
+- Site-relative head URLs (stylesheet, island shim) and the search
+  corpus URL now honor `base_path` — subpath deploys previously emitted
+  root-absolute asset URLs that 404ed under the prefix. External
+  (http-s) URLs pass through.

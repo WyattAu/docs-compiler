@@ -13,6 +13,15 @@
 
 use crate::directives::html_escape;
 
+/// Prefix a site-relative URL with the chrome's base path.
+fn site_url(base_path: &str, path: &str) -> String {
+    if base_path.is_empty() {
+        format!("/{path}")
+    } else {
+        format!("{base_path}/{path}")
+    }
+}
+
 /// The chrome stylesheet, embedded at compile time and emitted by the
 /// site builder as `/_assets/layout.css`.
 pub const LAYOUT_CSS: &str = include_str!("layout.css");
@@ -142,6 +151,7 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> St
         let index = chrome
             .search_index
             .clone()
+            .map(|i| site_url(base_path, &i))
             .unwrap_or_else(|| url("search.json"));
         format!(
             "<docs-island component-url=\"{u}\" client=\"idle\"><script type=\"application/json\" data-island-props>{{\"index\":\"{i}\"}}</script></docs-island>",
@@ -151,6 +161,7 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> St
     });
 
     let css_link = url("_assets/layout.css");
+    let _ = &css_link;
 
     let doc = doc.replacen(
         "</head>",
