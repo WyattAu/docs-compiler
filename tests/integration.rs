@@ -126,7 +126,7 @@ Tail prose.
     assert!(html.contains("<docs-island"));
     assert!(html.contains("docs-symbol") && html.contains("dsym-rust-"));
     assert!(html.contains("docs-witness") && html.contains("hello"));
-    assert!(html.contains("<h1>Lean-free page</h1>"));
+    assert!(html.contains("<h1 id=\"lean-free-page\">Lean-free page</h1>"));
     assert!(!html.contains("docs-proof"), "no lean fence, no badge");
 }
 

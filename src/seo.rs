@@ -51,6 +51,11 @@ pub struct SiteConfig {
     /// The search island chunk URL, emitted as a search trigger in the
     /// header (props point at `/search.json`).
     pub search_island: Option<String>,
+    /// URL path prefix for all site-relative links (subpath hosting,
+    /// e.g. `/solid-fx/preview`). Empty string = served at root.
+    pub base_path: String,
+    /// Open Graph image URL, emitted as `og:image` + `twitter:image`.
+    pub og_image: Option<String>,
 }
 
 impl SiteConfig {
@@ -65,6 +70,8 @@ impl SiteConfig {
         let mut stylesheet = None;
         let mut island_shim = None;
         let mut search_island = None;
+        let mut base_path = String::new();
+        let mut og_image = None;
         for line in text.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -82,6 +89,8 @@ impl SiteConfig {
                 "stylesheet" => stylesheet = Some(value),
                 "island_shim" => island_shim = Some(value),
                 "search_island" => search_island = Some(value),
+                "base_path" => base_path = value.trim_end_matches('/').to_string(),
+                "og_image" => og_image = Some(value),
                 _ => {}
             }
         }
@@ -93,6 +102,8 @@ impl SiteConfig {
             stylesheet,
             island_shim,
             search_island,
+            base_path,
+            og_image,
         })
     }
 }
@@ -146,9 +157,11 @@ pub fn split_front_matter(markdown: &str) -> (PageMeta, String) {
 /// Derive a page title from the rendered body: the first `<h1>` text.
 #[must_use]
 pub fn first_h1(body: &str) -> Option<String> {
-    let start = body.find("<h1>")? + 4;
-    let end = body[start..].find("</h1>")? + start;
-    let text = strip_tags(&body[start..end]);
+    // Matches both `<h1>` and `<h1 id="...">` (anchored headings, 0.3.0+).
+    let tag_pos = body.find("<h1")?;
+    let gt = body[tag_pos..].find('>')? + tag_pos + 1;
+    let end = body[gt..].find("</h1>")? + gt;
+    let text = strip_tags(&body[gt..end]);
     if text.is_empty() {
         None
     } else {
@@ -220,6 +233,7 @@ pub fn document(
     description: &str,
     route: &str,
     config: Option<&SiteConfig>,
+    breadcrumbs: &[(String, Option<String>)],
 ) -> String {
     let canonical = config
         .map(|c| format!("{}/{}", c.base_url, route))
@@ -266,6 +280,38 @@ pub fn document(
             )
         })
         .unwrap_or_default();
+    let og_image_tag = config
+        .and_then(|c| c.og_image.clone())
+        .map(|img| {
+            format!(
+                "<meta property=\"og:image\" content=\"{i}\"><meta name=\"twitter:image\" content=\"{i}\">",
+                i = escape_attr(&img)
+            )
+        })
+        .unwrap_or_default();
+    let feed_link = config
+        .map(|c| {
+            format!(
+                "<link rel=\"alternate\" type=\"application/atom+xml\" href=\"{u}/atom.xml\">",
+                u = c.base_url
+            )
+        })
+        .unwrap_or_default();
+    let breadcrumb_markup = if breadcrumbs.is_empty() {
+        String::new()
+    } else {
+        let mut parts: Vec<String> = vec!["<a href=\"/\">Home</a>".into()];
+        for (label, href) in breadcrumbs {
+            parts.push(match href {
+                Some(h) => format!("<a href=\"{}\">{}</a>", escape_attr(h), html_escape(label)),
+                None => html_escape(label),
+            });
+        }
+        format!(
+            "<nav class=\"breadcrumbs\">{}</nav>",
+            parts.join(" <span class=\"crumb-sep\">/</span> ")
+        )
+    };
     // Site-level head wiring (Wave 2c.5): the islands' stylesheet and
     // the shim module that registers <docs-island>.
     let head_extra = config
@@ -369,5 +415,51 @@ pub fn robots_txt(config: &SiteConfig) -> String {
         }
     }
     out.push_str(&format!("Sitemap: {}/sitemap.xml\n", config.base_url));
+    out
+}
+
+/// `atom.xml`: one entry per dated page, newest first. Pages without a
+/// front-matter date stay out of the feed (deterministic builds do not
+/// invent timestamps).
+#[must_use]
+pub fn atom_xml(config: &SiteConfig, pages: &[SeoPage]) -> String {
+    let mut dated: Vec<&SeoPage> = pages.iter().filter(|p| p.date.is_some()).collect();
+    dated.sort_by(|a, b| b.date.as_deref().cmp(&a.date.as_deref()));
+    let mut out = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n",
+    );
+    out.push_str(&format!(
+        "<title>{}</title>\n",
+        html_escape(&config.site_title)
+    ));
+    if !config.author.is_empty() {
+        out.push_str(&format!(
+            "<author><name>{}</name></author>\n",
+            html_escape(&config.author)
+        ));
+    }
+    let self_url = format!("{}/atom.xml", config.base_url);
+    out.push_str(&format!(
+        "<link rel=\"self\" href=\"{}\"/>\n<link rel=\"alternate\" href=\"{}\"/>\n<id>{}/</id>\n",
+        html_escape(&self_url),
+        config.base_url,
+        config.base_url,
+    ));
+    if let Some(newest) = dated.first() {
+        if let Some(date) = &newest.date {
+            out.push_str(&format!("<updated>{date}T00:00:00Z</updated>\n"));
+        }
+    }
+    for page in dated {
+        let url = format!("{}/{}", config.base_url, page.route);
+        out.push_str(&format!(
+            "<entry><title>{t}</title><link rel=\"alternate\" href=\"{u}\"/><id>{u}</id><published>{d}</published><summary>{s}</summary></entry>\n",
+            t = html_escape(&page.title),
+            u = html_escape(&url),
+            d = page.date.as_deref().unwrap_or(""),
+            s = html_escape(&page.description),
+        ));
+    }
+    out.push_str("</feed>\n");
     out
 }

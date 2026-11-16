@@ -50,7 +50,7 @@ fn sample_chrome(active_route: &str) -> Chrome {
 #[test]
 fn chrome_page_lifts_the_body_into_the_layout() {
     let doc = "<!doctype html><html><head><title>T</title></head><body><h1 id=\"guide\">Guide</h1><p>Body.</p></body></html>";
-    let page = chrome_page(doc, "Estate Docs", &sample_chrome("guides/setup.html"));
+    let page = chrome_page(doc, "Estate Docs", &sample_chrome("guides/setup.html"), "");
     assert!(
         page.contains("<header class=\"site-header\">"),
         "header: {page}"
@@ -81,7 +81,7 @@ fn chrome_escapes_titles_into_attributes_and_markup() {
     let mut chrome = sample_chrome("guides");
     chrome.nav[0].items[0].1 = "Setup\" onload=\"x".into();
     let doc = "<!doctype html><html><head></head><body><p>x</p></body></html>";
-    let page = chrome_page(doc, "Site", &chrome);
+    let page = chrome_page(doc, "Site", &chrome, "");
     assert!(!page.contains("onload=\"x\""), "titles escaped: {page}");
 }
 

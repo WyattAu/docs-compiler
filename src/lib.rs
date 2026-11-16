@@ -41,7 +41,7 @@ mod seo;
 mod serve;
 
 pub use chrome::{
-    extract_toc, layout_css as chrome_layout_css, page as chrome_page, Chrome, NavGroup, TocEntry,
+    extract_toc, page as chrome_page, Chrome, NavGroup, TocEntry, LAYOUT_CSS as chrome_layout_css,
 };
 pub use compress::{ext_token, pick_encoding, sidecar_path, Tools};
 pub use directives::{resolve, BuildContext};
@@ -51,7 +51,7 @@ pub use seo::{
     document, first_h1, first_paragraph, llms_txt, robots_txt, sitemap_xml, split_front_matter,
     PageMeta, SeoPage, SiteConfig,
 };
-pub use serve::{compile_site, mime_for, resolve_route, SiteReport};
+pub use serve::{compile_site, compile_site_with, mime_for, resolve_route, SiteReport};
 
 /// Compile one markdown document into a static HTML page.
 ///

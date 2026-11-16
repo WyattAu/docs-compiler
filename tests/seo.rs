@@ -26,6 +26,8 @@ fn sample_config() -> SiteConfig {
         base_url: "https://docs.example.com".into(),
         site_title: "Estate Docs".into(),
         author: "Wyatt".into(),
+        base_path: String::new(),
+        og_image: None,
         ai_crawlers: "allow".into(),
         stylesheet: Some("/_assets/islands.css".into()),
         island_shim: Some("/_assets/islands/island.mjs".into()),
@@ -70,6 +72,7 @@ fn document_head_carries_the_seo_floor() {
         "What the guide teaches",
         "guides/the-guide.html",
         Some(&config),
+        &[],
     );
     assert!(doc.starts_with("<!doctype html>"), "{doc}");
     assert!(doc.contains("<title>The Guide</title>"), "{doc}");
@@ -102,6 +105,7 @@ fn document_head_carries_the_seo_floor() {
         "d",
         "a.html",
         None,
+        &[],
     );
     assert!(!xss.contains("onload=\"x\""), "titles are escaped: {xss}");
 }
@@ -151,7 +155,7 @@ fn site_build_emits_documents_and_all_seo_artifacts() {
     assert!(index.contains("<title>Home</title>"), "{index}");
     assert!(index.contains("rel=\"canonical\""), "{index}");
     assert!(index.contains("application/ld+json"), "{index}");
-    assert!(index.contains("<h1>Home</h1>"), "{index}");
+    assert!(index.contains("<h1 id=\"home\">Home</h1>"), "{index}");
 
     // Description fallback from the first paragraph; slug reroutes.
     let second = std::fs::read_to_string(out.join("guides/second.html")).expect("second");
@@ -267,6 +271,7 @@ fn site_config_wires_stylesheet_and_island_shim_into_every_head() {
         "d",
         "t.html",
         Some(&config),
+        &[],
     );
     assert!(
         doc.contains("<link rel=\"stylesheet\" href=\"/_assets/islands.css\">"),
@@ -277,7 +282,15 @@ fn site_config_wires_stylesheet_and_island_shim_into_every_head() {
         "the shim registers <docs-island>: {doc}"
     );
     // No site config: no site-level head wiring.
-    let bare = document("<h1>x</h1>", &PageMeta::default(), "T", "d", "t.html", None);
+    let bare = document(
+        "<h1>x</h1>",
+        &PageMeta::default(),
+        "T",
+        "d",
+        "t.html",
+        None,
+        &[],
+    );
     assert!(
         !bare.contains("stylesheet") && !bare.contains("island.mjs"),
         "{bare}"

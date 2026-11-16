@@ -33,6 +33,17 @@ enum Command {
         #[arg(short, long)]
         root: Option<PathBuf>,
     },
+    /// Compile a directory of markdown into HTML (no server, no watch).
+    Build {
+        /// Directory of markdown sources (recursive; hidden dirs skipped).
+        src: PathBuf,
+        /// Output directory for the HTML (default: `<src>/../_site`).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// URL path prefix for all site-relative links (subpath hosting).
+        #[arg(long, default_value = "")]
+        base_path: String,
+    },
     /// Compile a directory of markdown into HTML and serve it,
     /// recompiling when any source file changes (the dev server).
     Serve {
@@ -58,6 +69,37 @@ fn main() {
             output,
             root,
         } => compile_one(&input, output, root),
+        Command::Build {
+            src,
+            out,
+            base_path,
+        } => {
+            let out = out.unwrap_or_else(|| src.parent().unwrap_or(Path::new(".")).join("_site"));
+            match docs_compiler::compile_site_with(&src, &out, Some(&base_path)) {
+                Ok(report) => {
+                    println!(
+                        "built {} page(s), {} compressed sidecar(s){}",
+                        report.built.len(),
+                        report.compressed,
+                        if report.dictionary {
+                            ", shared dictionary: site.dict"
+                        } else {
+                            ""
+                        }
+                    );
+                    for (path, error) in &report.errors {
+                        eprintln!("  FAILED {}: {error}", path.display());
+                    }
+                    if !report.is_clean() {
+                        std::process::exit(1);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("cannot build site {}: {e}", src.display());
+                    std::process::exit(2);
+                }
+            }
+        }
         Command::Serve {
             src,
             out,

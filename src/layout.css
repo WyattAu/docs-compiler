@@ -36,6 +36,8 @@ body {
 
 /* Header */
 .site-header {
+  container-type: inline-size;
+
   position: sticky;
   top: 0;
   z-index: 10;
@@ -213,6 +215,12 @@ body { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
 .pager span:empty { visibility: hidden; }
 
 /* Narrow screens: sidebar collapses to a top block. */
+/* The header search island flexes on narrow screens. */
+@container (max-width: 480px) {
+  .site-header docs-island { flex: 1 1 auto; min-width: 0; }
+  .site-header docs-island input { width: 100% !important; max-width: none !important; }
+}
+
 @media (max-width: 900px) {
   body { display: block; }
   .sidebar {

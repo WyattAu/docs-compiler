@@ -85,7 +85,27 @@ struct PageBuild {
 /// # Errors
 /// I/O failures on the tree walk or output creation.
 pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
-    let config = SiteConfig::load(src);
+    compile_site_with(src, out, None)
+}
+
+/// [`compile_site`] with a base-path override (subpath hosting: the
+/// preview deploy under `/solid-fx/preview` passes that prefix here and
+/// every chrome URL follows it).
+///
+/// # Errors
+/// Same as [`compile_site`].
+pub fn compile_site_with(
+    src: &Path,
+    out: &Path,
+    base_path_override: Option<&str>,
+) -> io::Result<SiteReport> {
+    let mut config = SiteConfig::load(src);
+    if let Some(bp) = base_path_override {
+        if let Some(c) = config.as_mut() {
+            c.base_path = bp.trim_end_matches('/').to_string();
+        }
+    }
+    let config = config;
     let tools = compress::Tools::detect();
     let mut report = SiteReport {
         configured: config.is_some(),
@@ -131,9 +151,26 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
     // Pass 2: chrome-wrap and write every page, in route order. The
     // search corpus grows alongside (title/url/description/body JSON for
     // the doc-search island, plus the docs-search binary index).
+    let base_path_str = config.as_ref().map(|c| c.base_path.clone());
     let mut corpus = String::from("[\n");
     let mut index = docs_search::IndexBuilder::new();
     for page in &pages {
+        // Breadcrumbs: Home + the intermediate directory (no link unless
+        // a group index page exists - the styled 404 catches stale ones).
+        let segs: Vec<&str> = page.route.split('/').collect();
+        let home_href = base_path_str
+            .clone()
+            .map_or_else(|| "/".to_string(), |bp| format!("{bp}/"));
+        let mut breadcrumbs: Vec<(String, Option<String>)> =
+            vec![("Home".to_string(), Some(home_href))];
+        if segs.len() >= 3 {
+            let dir_label = segs[1].split('.').next().unwrap_or(segs[1]);
+            let mut label = dir_label.to_string();
+            if let Some(first) = label.chars().next() {
+                label = first.to_uppercase().to_string() + &label[first.len_utf8()..];
+            }
+            breadcrumbs.push((label, None));
+        }
         let chrome = Chrome {
             nav: nav_groups(&pages, &page.route),
             active_route: page.route.clone(),
@@ -141,7 +178,10 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
             prev: prev_of(&pages, &page.route),
             next: next_of(&pages, &page.route),
             search_island: config.as_ref().and_then(|c| c.search_island.clone()),
-            search_index: config.as_ref().map(|_| "/search.json".into()),
+            search_index: Some(match base_path_str.as_deref() {
+                Some("") | None => "/search.json".to_string(),
+                Some(bp) => format!("{bp}/search.json"),
+            }),
         };
         let doc = seo::document(
             &page.body,
@@ -150,11 +190,17 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
             &page.description,
             &page.route,
             config.as_ref(),
+            &breadcrumbs,
         );
         let site_title = config
             .as_ref()
             .map_or_else(|| "Docs".to_string(), |c| c.site_title.clone());
-        let with_chrome = chrome::page(&doc, &site_title, &chrome);
+        let with_chrome = chrome::page(
+            &doc,
+            &site_title,
+            &chrome,
+            base_path_str.as_deref().unwrap_or(""),
+        );
         let target = out.join(&page.route);
         if let Some(parent) = target.parent() {
             std::fs::create_dir_all(parent)?;
@@ -194,7 +240,43 @@ pub fn compile_site(src: &Path, out: &Path) -> io::Result<SiteReport> {
             std::fs::write(&path, content)?;
             report.artifacts.push(path);
         }
+        let feed_path = out.join("atom.xml");
+        std::fs::write(&feed_path, seo::atom_xml(config, page_refs))?;
+        report.artifacts.push(feed_path);
     }
+
+    // Styled 404: a chrome-wrapped page served for missing routes.
+    let not_found = seo::document(
+        "<h1>404</h1><p>This page does not exist. Use the navigation to find your way back.</p>",
+        &seo::PageMeta::default(),
+        "404 - not found",
+        "Page not found.",
+        "404.html",
+        config.as_ref(),
+        &[],
+    );
+    let not_found = chrome::page(
+        &not_found,
+        &config
+            .as_ref()
+            .map_or_else(|| "Docs".to_string(), |c| c.site_title.clone()),
+        &chrome::Chrome {
+            nav: nav_groups(&pages, ""),
+            active_route: "404.html".into(),
+            toc: Vec::new(),
+            prev: None,
+            next: None,
+            search_island: config.as_ref().and_then(|c| c.search_island.clone()),
+            search_index: Some(match base_path_str.as_deref() {
+                Some("") | None => "/search.json".to_string(),
+                Some(bp) => format!("{bp}/search.json"),
+            }),
+        },
+        base_path_str.as_deref().unwrap_or(""),
+    );
+    let not_found_path = out.join("404.html");
+    std::fs::write(&not_found_path, not_found)?;
+    report.artifacts.push(not_found_path);
 
     // Search artifacts: the JSON corpus for the doc-search island and a
     // docs-search binary index for the future in-browser reader.

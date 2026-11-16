@@ -13,6 +13,10 @@
 
 use crate::directives::html_escape;
 
+/// The chrome stylesheet, embedded at compile time and emitted by the
+/// site builder as `/_assets/layout.css`.
+pub const LAYOUT_CSS: &str = include_str!("layout.css");
+
 /// One group in the sidebar nav tree (a top-level directory).
 #[derive(Debug, Clone, PartialEq)]
 pub struct NavGroup {
@@ -48,19 +52,13 @@ pub struct Chrome {
     pub prev: Option<(String, String)>,
     /// Next page: (route, title).
     pub next: Option<(String, String)>,
-    /// Search island chunk URL, when the site wires search. Also emitted
-    /// in the header as the search trigger's island.
+    /// Search island chunk URL, when the site wires search. Emitted
+    /// verbatim (a site.toml author includes any base path).
     pub search_island: Option<String>,
-    /// The search corpus URL handed to the island via props.
+    /// The search corpus URL handed to the island via props. Prefixed
+    /// with the base path like every other site-relative link.
     pub search_index: Option<String>,
 }
-
-/// The chrome stylesheet, embedded at compile time and emitted by the
-/// site builder as `/_assets/layout.css`.
-pub const LAYOUT_CSS: &str = include_str!("layout.css");
-
-/// Convenience alias for re-export (the const name reads better at the crate root).
-pub use LAYOUT_CSS as layout_css;
 
 /// The theme-toggle inline script: toggles `data-theme` on `<html>` and
 /// persists the choice. The one sanctioned inline script in the chrome
@@ -71,10 +69,26 @@ const THEME_SCRIPT: &str = "<script>const h=document.documentElement;const t=doc
 /// full `<!doctype html>...<body>content</body></html>` document from
 /// `seo::document`; the body content is lifted into the layout
 /// (header + sidebar + main + TOC + pager) by exact-markup surgery on
-/// markup this crate itself emitted.
+/// markup this crate itself emitted. `base_path` prefixes every
+/// site-relative URL the chrome emits (empty string = served at root).
 #[must_use]
-pub fn page(doc: &str, site_title: &str, chrome: &Chrome) -> String {
-    let mut nav_markup = String::from("<a class=\"brand\" href=\"/\">");
+pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> String {
+    // Site-relative URL builder under the (possibly empty) base path.
+    let url = |path: &str| {
+        if base_path.is_empty() {
+            format!("/{path}")
+        } else {
+            format!("{base_path}/{path}")
+        }
+    };
+    let url_string = |path: &str| {
+        let u = url(path);
+        u
+    };
+
+    let mut nav_markup = String::from("<a class=\"brand\" href=\"");
+    nav_markup.push_str(&url(""));
+    nav_markup.push_str("\">");
     nav_markup.push_str(&html_escape(site_title));
     nav_markup.push_str("</a>");
     for group in &chrome.nav {
@@ -90,8 +104,8 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome) -> String {
                 ""
             };
             nav_markup.push_str(&format!(
-                "<a href=\"/{r}\"{c}>{t}</a>",
-                r = html_escape(route),
+                "<a href=\"{r}\"{c}>{t}</a>",
+                r = html_escape(&url(route)),
                 c = class,
                 t = html_escape(title),
             ));
@@ -120,8 +134,8 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome) -> String {
                         label: &'static str| {
         match link {
             Some((route, title)) => format!(
-                "<a class=\"pager {class}\" href=\"/{r}\"><span class=\"pager-label\">{l}</span><span class=\"pager-title\">{t}</span></a>",
-                r = html_escape(route),
+                "<a class=\"pager {class}\" href=\"{r}\"><span class=\"pager-label\">{l}</span><span class=\"pager-title\">{t}</span></a>",
+                r = html_escape(&url(route)),
                 l = label,
                 t = html_escape(title),
             ),
@@ -129,31 +143,35 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome) -> String {
         }
     };
 
-    let search_header = chrome.search_island.as_ref().map_or_else(String::new, |url| {
+    let search_header = chrome.search_island.as_ref().map_or_else(String::new, |chunk| {
         let index = chrome
             .search_index
             .clone()
-            .unwrap_or_else(|| "/search.json".into());
+            .unwrap_or_else(|| url("search.json"));
         format!(
             "<docs-island component-url=\"{u}\" client=\"idle\"><script type=\"application/json\" data-island-props>{{\"index\":\"{i}\"}}</script></docs-island>",
-            u = html_escape(url),
+            u = html_escape(chunk),
             i = html_escape(&index),
         )
     });
 
-    // The chrome stylesheet link is injected unconditionally: the
-    // layout classes are part of the emitted markup itself.
+    let css_link = url("_assets/layout.css");
+
     let doc = doc.replacen(
         "</head>",
-        "<link rel=\"stylesheet\" href=\"/_assets/layout.css\"></head>",
+        &format!(
+            "<link rel=\"stylesheet\" href=\"{}\"></head>",
+            html_escape(&css_link)
+        ),
         1,
     );
     let doc = doc.replacen(
         "<body>",
         &format!(
-            "<body><header class=\"site-header\"><a class=\"brand\" href=\"/\">{b}</a>{search}</header>\
+            "<body><header class=\"site-header\"><a class=\"brand\" href=\"{home}\">{b}</a>{search}<button id=\"theme-toggle\" aria-label=\"toggle theme\"></button></header>\
 <nav class=\"sidebar\">{nav}</nav>\
 <div class=\"page\"><main>",
+            home = html_escape(&url("")),
             b = html_escape(site_title),
             search = search_header,
             nav = nav_markup,
