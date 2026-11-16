@@ -170,3 +170,9 @@ All notable changes to this project are documented in this file.
   feature) now reach the chrome TOC. Sidebar nav groups also key on the
   page's directory (depth-2 routes group by top segment; deeper routes
   by the first two).
+
+### Fixed (0.6.3)
+
+- `first_h1` matches `<h1 id="...">` (anchored headings from docs-core
+  0.3.0) — the title fallback was silently picking the file stem on
+  every anchored page since 0.3.0-shaped bodies appeared.
