@@ -15,12 +15,26 @@ use crate::lean::lean_check;
 pub struct BuildContext {
     /// Repository/docs root (fence paths are relative to it).
     pub root: PathBuf,
+    /// Asset URL prefix for island component URLs ("/_assets" default;
+    /// subpath deploys pass "/<base>/_assets").
+    pub asset_base: String,
 }
 
 impl BuildContext {
-    /// A context rooted at `root`.
+    /// A context rooted at `root` with an explicit asset base.
+    pub fn with_asset_base(root: impl Into<PathBuf>, asset_base: impl Into<String>) -> Self {
+        Self {
+            root: root.into(),
+            asset_base: asset_base.into(),
+        }
+    }
+
+    /// A context rooted at `root`, assets at the default `/_assets`.
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self {
+            root: root.into(),
+            asset_base: "/_assets".to_string(),
+        }
     }
 
     fn read(&self, path: &str) -> Result<Vec<u8>, CompilerError> {

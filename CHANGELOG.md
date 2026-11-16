@@ -176,3 +176,27 @@ All notable changes to this project are documented in this file.
 - `first_h1` matches `<h1 id="...">` (anchored headings from docs-core
   0.3.0) — the title fallback was silently picking the file stem on
   every anchored page since 0.3.0-shaped bodies appeared.
+
+## [0.7.0] - 2026-11-15
+
+### Added
+
+- **Site chrome module (`chrome.rs`)**: the layout extracted from
+  serve-string surgery into a real module — header, sidebar nav tree,
+  TOC (from anchored h2/h3), prev/next pager, theme toggle (one
+  5-line inline script), search island slot, and the embedded
+  `layout.css` (dark default + light palette via `data-theme`,
+  container-query header search on narrow screens, emitted as
+  `/_assets/layout.css` and linked automatically).
+- **Breadcrumbs**: `Home / Guides` rendered per page from the route.
+- **`base_path`** (site.toml + `compile_site_with` override +
+  `build --base-path`): every site-relative chrome URL follows the
+  prefix — subpath hosting (GitHub Pages project previews) works.
+- **`og:image`/`twitter:image`** (site.toml `og_image`).
+- **`atom.xml`** feed: dated pages, newest first, author injected.
+- **Styled chrome-wrapped `404.html`**, served for missing routes.
+- **`build` CLI subcommand**: compile a directory without serving,
+  with `--base-path` — the production-deploy primitive.
+- Dependency floor: `docs-search = "0.2"` (the estate's own L0) — the
+  search corpus now also exists as a binary FST index (`search.bin`)
+  alongside the JSON corpus, closing the four-slice loop in one build.

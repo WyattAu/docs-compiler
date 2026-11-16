@@ -126,7 +126,7 @@ pub fn compile_site_with(
                     stack.push(path);
                 }
             } else if name.ends_with(".md") {
-                build_page(src, &path, &mut report, &mut pages);
+                build_page(src, &path, config.as_ref(), &mut report, &mut pages);
             }
         }
     }
@@ -163,9 +163,8 @@ pub fn compile_site_with(
             .map_or_else(|| "/".to_string(), |bp| format!("{bp}/"));
         let mut breadcrumbs: Vec<(String, Option<String>)> =
             vec![("Home".to_string(), Some(home_href))];
-        if segs.len() >= 3 {
-            let dir_label = segs[1].split('.').next().unwrap_or(segs[1]);
-            let mut label = dir_label.to_string();
+        if let Some(dir) = segs.get(1) {
+            let mut label = dir.split('.').next().unwrap_or(dir).to_string();
             if let Some(first) = label.chars().next() {
                 label = first.to_uppercase().to_string() + &label[first.len_utf8()..];
             }
@@ -303,7 +302,13 @@ pub fn compile_site_with(
 
 /// Build one page's metadata and body into the pending list. All
 /// failures land in the report - one bad page never blocks the site.
-fn build_page(src: &Path, path: &Path, report: &mut SiteReport, pages: &mut Vec<PageBuild>) {
+fn build_page(
+    src: &Path,
+    path: &Path,
+    config: Option<&SiteConfig>,
+    report: &mut SiteReport,
+    pages: &mut Vec<PageBuild>,
+) {
     let rel = match path.strip_prefix(src) {
         Ok(r) => r.to_path_buf(),
         Err(_) => path.to_path_buf(),
@@ -320,7 +325,13 @@ fn build_page(src: &Path, path: &Path, report: &mut SiteReport, pages: &mut Vec<
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
-    let body = match compile(&body_markdown, &BuildContext::new(root)) {
+    let ctx = match config {
+        Some(c) if !c.base_path.is_empty() => {
+            BuildContext::with_asset_base(root, format!("{}/_assets", c.base_path))
+        }
+        _ => BuildContext::new(root),
+    };
+    let body = match compile(&body_markdown, &ctx) {
         Ok(html) => html,
         Err(e) => {
             report.errors.push((path.to_path_buf(), e.to_string()));

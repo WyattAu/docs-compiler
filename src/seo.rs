@@ -343,9 +343,10 @@ pub fn document(
 <meta name=\"twitter:card\" content=\"summary\">\
 <meta name=\"twitter:title\" content=\"{t}\">\
 <meta name=\"twitter:description\" content=\"{d}\">\
-{head_extra}{json_ld_tag}</head><body>{body}</body></html>",
+{head_extra}{og_image_tag}{feed_link}{json_ld_tag}</head><body>{breadcrumb_markup}{body}</body></html>",
         t = escape_attr(title),
-        d = escape_attr(description)
+        d = escape_attr(description),
+        breadcrumb_markup = breadcrumb_markup
     )
 }
 

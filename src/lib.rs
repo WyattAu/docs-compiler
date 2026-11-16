@@ -61,7 +61,7 @@ pub use serve::{compile_site, compile_site_with, mime_for, resolve_route, SiteRe
 pub fn compile(source: &str, ctx: &BuildContext) -> Result<String, CompilerError> {
     let scanned = scan(source);
     let resolved = scanned.substitute(|d| resolve(d, ctx))?;
-    docs_core::render(&resolved, "/_assets").map_err(CompilerError::Render)
+    docs_core::render(&resolved, &ctx.asset_base).map_err(CompilerError::Render)
 }
 
 /// The crate's version, for callers that report it.

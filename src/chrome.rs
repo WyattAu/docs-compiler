@@ -81,11 +81,6 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> St
             format!("{base_path}/{path}")
         }
     };
-    let url_string = |path: &str| {
-        let u = url(path);
-        u
-    };
-
     let mut nav_markup = String::from("<a class=\"brand\" href=\"");
     nav_markup.push_str(&url(""));
     nav_markup.push_str("\">");
