@@ -158,11 +158,9 @@ pub fn compile_site_with(
         // Breadcrumbs: Home + the intermediate directory (no link unless
         // a group index page exists - the styled 404 catches stale ones).
         let segs: Vec<&str> = page.route.split('/').collect();
-        let home_href = base_path_str
-            .clone()
-            .map_or_else(|| "/".to_string(), |bp| format!("{bp}/"));
-        let mut breadcrumbs: Vec<(String, Option<String>)> =
-            vec![("Home".to_string(), Some(home_href))];
+        // document() owns the Home crumb; intermediate directories are
+        // plain-text labels here (group index pages may not exist).
+        let mut breadcrumbs: Vec<(String, Option<String>)> = Vec::new();
         if let Some(dir) = segs.get(1) {
             let mut label = dir.split('.').next().unwrap_or(dir).to_string();
             if let Some(first) = label.chars().next() {
