@@ -207,3 +207,10 @@ All notable changes to this project are documented in this file.
   corpus URL now honor `base_path` — subpath deploys previously emitted
   root-absolute asset URLs that 404ed under the prefix. External
   (http-s) URLs pass through.
+
+### Fixed (0.7.2)
+
+- `search.json` is now valid JSON: entries are comma-joined instead of
+  each carrying a trailing comma — the trailing comma made
+  `response.json()` fail in the DocSearch island, so the dropdown never
+  showed results. Found by on-device QA ('saga' typed, empty panel).

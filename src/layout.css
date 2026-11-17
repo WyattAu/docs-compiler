@@ -216,9 +216,11 @@ body { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
 
 /* Narrow screens: sidebar collapses to a top block. */
 /* The header search island flexes on narrow screens. */
+.site-header docs-island { display: block; }
+.site-header docs-island form { display: flex; gap: 0.5rem; }
+.site-header docs-island input { width: 100%; max-width: none; }
 @container (max-width: 480px) {
   .site-header docs-island { flex: 1 1 auto; min-width: 0; }
-  .site-header docs-island input { width: 100% !important; max-width: none !important; }
 }
 
 @media (max-width: 900px) {

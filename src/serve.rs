@@ -152,7 +152,7 @@ pub fn compile_site_with(
     // search corpus grows alongside (title/url/description/body JSON for
     // the doc-search island, plus the docs-search binary index).
     let base_path_str = config.as_ref().map(|c| c.base_path.clone());
-    let mut corpus = String::from("[\n");
+    let mut corpus_entries: Vec<String> = Vec::new();
     let mut index = docs_search::IndexBuilder::new();
     for page in &pages {
         // Breadcrumbs: Home + the intermediate directory (no link unless
@@ -214,8 +214,8 @@ pub fn compile_site_with(
             date: page.date.clone(),
         });
 
-        corpus.push_str(&format!(
-            "{{\"title\":{},\"url\":{},\"description\":{},\"body\":{}}},\n",
+        corpus_entries.push(format!(
+            "{{\"title\":{},\"url\":{},\"description\":{},\"body\":{}}}",
             serde_json::to_string(&page.title).unwrap_or_else(|_| "\"\"".into()),
             serde_json::to_string(&format!("/{}", page.route)).unwrap_or_else(|_| "\"\"".into()),
             serde_json::to_string(&page.description).unwrap_or_else(|_| "\"\"".into()),
@@ -279,8 +279,8 @@ pub fn compile_site_with(
 
     // Search artifacts: the JSON corpus for the doc-search island and a
     // docs-search binary index for the future in-browser reader.
-    if !report.pages.is_empty() {
-        corpus.push_str("]\n");
+    if !corpus_entries.is_empty() {
+        let corpus = format!("[\n{}\n]\n", corpus_entries.join(",\n"));
         let corpus_path = out.join("search.json");
         std::fs::write(&corpus_path, corpus)?;
         report.artifacts.push(corpus_path);

@@ -296,3 +296,32 @@ fn site_config_wires_stylesheet_and_island_shim_into_every_head() {
         "{bare}"
     );
 }
+
+#[test]
+fn search_corpus_is_valid_json_without_trailing_comma() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = dir.path().join("src");
+    let out = dir.path().join("out");
+    std::fs::create_dir_all(&src).expect("src");
+    for n in 0..3 {
+        std::fs::write(
+            src.join(format!("p{n}.md")),
+            format!("# Page {n}\n\nCorpus body {n} for validation.\n"),
+        )
+        .expect("page");
+    }
+    let report = docs_compiler::compile_site(&src, &out).expect("site builds");
+    assert!(report.artifacts.iter().any(|a| a.ends_with("search.json")));
+
+    let corpus = std::fs::read_to_string(out.join("search.json")).expect("corpus");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&corpus).expect("emitted corpus must be valid JSON");
+    let entries = parsed.as_array().expect("corpus is an array");
+    assert_eq!(entries.len(), 3);
+    assert!(
+        !corpus.trim_end().ends_with(','),
+        "no trailing comma before the closing bracket"
+    );
+    assert_eq!(entries[0]["title"], "Page 0");
+    assert_eq!(entries[0]["url"], "/p0.html");
+}
