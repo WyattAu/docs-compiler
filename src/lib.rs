@@ -19,7 +19,7 @@
 //!     &BuildContext::new("."),
 //! )
 //! .unwrap();
-//! assert!(html.contains("<h1>Title</h1>"));
+//! assert!(html.contains("<h1 id=\"title\">Title</h1>"));
 //! ```
 //!
 //! # Layer
