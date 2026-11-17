@@ -225,11 +225,15 @@ version = "0.2.7"
 criteria = "safe-to-deploy"
 
 [[exemptions.docs-core]]
-version = "0.2.1"
+version = "0.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.docs-proof]]
 version = "0.1.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.docs-search]]
+version = "0.2.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.docs-symbols]]
@@ -302,6 +306,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.fs-set-times]]
 version = "0.20.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.fst]]
+version = "0.4.7"
 criteria = "safe-to-deploy"
 
 [[exemptions.futures]]
