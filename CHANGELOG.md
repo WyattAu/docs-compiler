@@ -214,3 +214,9 @@ All notable changes to this project are documented in this file.
   each carrying a trailing comma — the trailing comma made
   `response.json()` fail in the DocSearch island, so the dropdown never
   showed results. Found by on-device QA ('saga' typed, empty panel).
+
+### Fixed (0.7.3)
+
+- Breadcrumbs: `document()` owns the Home crumb; the site builder passes
+  only intermediate directory labels — generated pages no longer render
+  "Home / Home".
