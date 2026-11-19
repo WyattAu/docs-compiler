@@ -44,6 +44,8 @@ fn sample_chrome(active_route: &str) -> Chrome {
         next: Some(("guides/next.html".into(), "Next page".into())),
         search_island: Some("/_assets/islands/doc-search.js".into()),
         search_index: Some("/search.json".into()),
+        search_wasm: Some("/_assets/islands/docs_search.wasm".into()),
+        search_bin: Some("/search.bin".into()),
     }
 }
 

@@ -220,3 +220,12 @@ All notable changes to this project are documented in this file.
 - Breadcrumbs: `document()` owns the Home crumb; the site builder passes
   only intermediate directory labels — generated pages no longer render
   "Home / Home".
+
+### Added (0.7.4)
+
+- Site config gains `search_wasm` + `search_bin` (site-relative URLs to
+  the docs_search.wasm reader module and the FST binary index). When
+  set, the chrome header search island receives all three URLs as
+  props — the island queries the wasm reader first and falls back to
+  JSON corpus scoring when the module is unavailable. Closing the
+  search loop: the FST binary index is now queryable client-side.

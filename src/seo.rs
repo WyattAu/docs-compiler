@@ -51,6 +51,11 @@ pub struct SiteConfig {
     /// The search island chunk URL, emitted as a search trigger in the
     /// header (props point at `/search.json`).
     pub search_island: Option<String>,
+    /// The docs_search.wasm reader module URL (site-relative; wasm-first
+    /// search). Empty/absent = the island falls back to JSON scoring.
+    pub search_wasm: Option<String>,
+    /// The FST binary index URL (site-relative; reader input).
+    pub search_bin: Option<String>,
     /// URL path prefix for all site-relative links (subpath hosting,
     /// e.g. `/solid-fx/preview`). Empty string = served at root.
     pub base_path: String,
@@ -70,6 +75,8 @@ impl SiteConfig {
         let mut stylesheet = None;
         let mut island_shim = None;
         let mut search_island = None;
+        let mut search_wasm = None;
+        let mut search_bin = None;
         let mut base_path = String::new();
         let mut og_image = None;
         for line in text.lines() {
@@ -89,6 +96,8 @@ impl SiteConfig {
                 "stylesheet" => stylesheet = Some(value),
                 "island_shim" => island_shim = Some(value),
                 "search_island" => search_island = Some(value),
+                "search_wasm" => search_wasm = Some(value),
+                "search_bin" => search_bin = Some(value),
                 "base_path" => base_path = value.trim_end_matches('/').to_string(),
                 "og_image" => og_image = Some(value),
                 _ => {}
@@ -102,6 +111,8 @@ impl SiteConfig {
             stylesheet,
             island_shim,
             search_island,
+            search_wasm,
+            search_bin,
             base_path,
             og_image,
         })

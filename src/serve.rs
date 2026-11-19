@@ -179,6 +179,8 @@ pub fn compile_site_with(
                 Some("") | None => "/search.json".to_string(),
                 Some(bp) => format!("{bp}/search.json"),
             }),
+            search_wasm: config.as_ref().and_then(|c| c.search_wasm.clone()),
+            search_bin: config.as_ref().and_then(|c| c.search_bin.clone()),
         };
         let doc = seo::document(
             &page.body,
@@ -258,7 +260,7 @@ pub fn compile_site_with(
             .as_ref()
             .map_or_else(|| "Docs".to_string(), |c| c.site_title.clone()),
         &chrome::Chrome {
-            nav: nav_groups(&pages, ""),
+            nav: nav_groups(&pages, "404.html"),
             active_route: "404.html".into(),
             toc: Vec::new(),
             prev: None,
@@ -268,6 +270,8 @@ pub fn compile_site_with(
                 Some("") | None => "/search.json".to_string(),
                 Some(bp) => format!("{bp}/search.json"),
             }),
+            search_wasm: config.as_ref().and_then(|c| c.search_wasm.clone()),
+            search_bin: config.as_ref().and_then(|c| c.search_bin.clone()),
         },
         base_path_str.as_deref().unwrap_or(""),
     );

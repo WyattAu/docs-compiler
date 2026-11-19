@@ -67,6 +67,11 @@ pub struct Chrome {
     /// The search corpus URL handed to the island via props. Prefixed
     /// with the base path like every other site-relative link.
     pub search_index: Option<String>,
+    /// The docs_search.wasm reader module URL (site-relative; prefixed
+    /// like search_index). Empty = the island runs JSON-only scoring.
+    pub search_wasm: Option<String>,
+    /// The FST binary index URL (site-relative; prefixed).
+    pub search_bin: Option<String>,
 }
 
 /// The theme-toggle inline script: toggles `data-theme` on `<html>` and
@@ -153,10 +158,23 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> St
             .clone()
             .map(|i| site_url(base_path, &i))
             .unwrap_or_else(|| url("search.json"));
+        let wasm_url = chrome
+            .search_wasm
+            .clone()
+            .map(|w| site_url(base_path, &w));
+        let bin_url = chrome
+            .search_bin
+            .clone()
+            .map(|b| site_url(base_path, &b));
+        let props = match (wasm_url, bin_url) {
+            (Some(w), Some(b)) => {
+                format!("{{\"index\":\"{i}\",\"wasm\":\"{w}\",\"bin\":\"{b}\"}}", i = html_escape(&index), w = html_escape(&w), b = html_escape(&b))
+            }
+            _ => format!("{{\"index\":\"{i}\"}}", i = html_escape(&index)),
+        };
         format!(
-            "<docs-island component-url=\"{u}\" client=\"idle\"><script type=\"application/json\" data-island-props>{{\"index\":\"{i}\"}}</script></docs-island>",
+            "<docs-island component-url=\"{u}\" client=\"idle\"><script type=\"application/json\" data-island-props>{props}</script></docs-island>",
             u = html_escape(chunk),
-            i = html_escape(&index),
         )
     });
 
