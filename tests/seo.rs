@@ -328,3 +328,65 @@ fn search_corpus_is_valid_json_without_trailing_comma() {
     assert_eq!(entries[0]["title"], "Page 0");
     assert_eq!(entries[0]["url"], "/p0.html");
 }
+
+#[test]
+fn subpath_hosting_prefixed_into_every_absolute_url() {
+    let mut cfg = sample_config();
+    cfg.base_path = "/solid-fx/preview".into();
+
+    let doc = document(
+        "<h1>Guide</h1><p>Body.</p>",
+        &PageMeta::default(),
+        "Guide",
+        "Body.",
+        "guides/the-guide.html",
+        Some(&cfg),
+        &[],
+    );
+    assert!(
+        doc.contains(
+            "canonical\" href=\"https://docs.example.com/solid-fx/preview/guides/the-guide.html"
+        ),
+        "canonical carries the base path: {doc}"
+    );
+    assert!(
+        doc.contains("atom+xml\" href=\"https://docs.example.com/solid-fx/preview/atom.xml"),
+        "feed link carries the base path"
+    );
+
+    let page = SeoPage {
+        title: "Guide".into(),
+        route: "guides/the-guide.html".into(),
+        description: "Body.".into(),
+        date: None,
+    };
+    let sitemap = sitemap_xml(&cfg, &[page]);
+    assert!(
+        sitemap
+            .contains("<loc>https://docs.example.com/solid-fx/preview/guides/the-guide.html</loc>"),
+        "sitemap loc carries the base path: {sitemap}"
+    );
+
+    let robots = robots_txt(&cfg);
+    assert!(
+        robots.contains("Sitemap: https://docs.example.com/solid-fx/preview/sitemap.xml"),
+        "robots sitemap carries the base path: {robots}"
+    );
+
+    // No base path = unchanged shapes.
+    let mut root = sample_config();
+    root.base_path = String::new();
+    let doc = document(
+        "<h1>Guide</h1><p>Body.</p>",
+        &PageMeta::default(),
+        "Guide",
+        "Body.",
+        "g.html",
+        Some(&root),
+        &[],
+    );
+    assert!(
+        doc.contains("canonical\" href=\"https://docs.example.com/g.html"),
+        "no double slash without a base path"
+    );
+}

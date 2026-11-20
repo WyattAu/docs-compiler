@@ -68,6 +68,28 @@ pub struct SiteConfig {
 }
 
 impl SiteConfig {
+    /// Absolute URL for a site route: `base_url` (origin) joined with
+    /// the optional `base_path` (subpath hosting) and the route. The
+    /// empty route gives the site root. Slash-join is normalized (no
+    /// double slashes when `base_path` is empty).
+    pub fn full_url(&self, route: &str) -> String {
+        let bp = self.base_path.trim_matches('/');
+        let base = if bp.is_empty() {
+            self.base_url.clone()
+        } else {
+            format!("{}/{}", self.base_url, bp)
+        };
+        if route.is_empty() {
+            base
+        } else if route.starts_with('/') {
+            format!("{base}{route}")
+        } else {
+            format!("{base}/{route}")
+        }
+    }
+}
+
+impl SiteConfig {
     /// Parse `site.toml` if present: `key = "value"` scalar lines only.
     /// `base_url` is the one required key; the rest have defaults.
     pub fn load(src: &Path) -> Option<SiteConfig> {
@@ -266,9 +288,7 @@ pub fn document(
     config: Option<&SiteConfig>,
     breadcrumbs: &[(String, Option<String>)],
 ) -> String {
-    let canonical = config
-        .map(|c| format!("{}/{}", c.base_url, route))
-        .unwrap_or_default();
+    let canonical = config.map(|c| c.full_url(route)).unwrap_or_default();
     let canonical_tags = if canonical.is_empty() {
         String::new()
     } else {
@@ -284,7 +304,7 @@ pub fn document(
                 "@type": "TechArticle",
                 "headline": title,
                 "description": description,
-                "isPartOf": { "@type": "WebSite", "name": c.site_title, "url": c.base_url },
+                "isPartOf": { "@type": "WebSite", "name": c.site_title, "url": c.full_url("") },
             });
             if let Some(obj) = article.as_object_mut() {
                 if !canonical.is_empty() {
@@ -324,8 +344,8 @@ pub fn document(
     let feed_link = config
         .map(|c| {
             format!(
-                "<link rel=\"alternate\" type=\"application/atom+xml\" href=\"{u}/atom.xml\">",
-                u = c.base_url
+                "<link rel=\"alternate\" type=\"application/atom+xml\" href=\"{u}\">",
+                u = escape_attr(&c.full_url("atom.xml"))
             )
         })
         .unwrap_or_default();
@@ -392,10 +412,9 @@ pub fn llms_txt(config: &SiteConfig, pages: &[SeoPage]) -> String {
     }
     for page in pages {
         out.push_str(&format!(
-            "- [{t}]({u}/{r}): {d}\n",
+            "- [{t}]({u}): {d}\n",
             t = page.title,
-            u = config.base_url,
-            r = page.route,
+            u = config.full_url(&page.route),
             d = page.description
         ));
     }
@@ -419,8 +438,8 @@ pub fn sitemap_xml(config: &SiteConfig, pages: &[SeoPage]) -> String {
             .map(|d| format!("<lastmod>{d}</lastmod>"))
             .unwrap_or_default();
         out.push_str(&format!(
-            "<url><loc>{}/{}</loc>{lastmod}</url>\n",
-            config.base_url, page.route
+            "<url><loc>{}</loc>{lastmod}</url>\n",
+            config.full_url(&page.route)
         ));
     }
     out.push_str("</urlset>\n");
@@ -447,7 +466,7 @@ pub fn robots_txt(config: &SiteConfig) -> String {
             out.push_str("User-agent: *\nAllow: /\n");
         }
     }
-    out.push_str(&format!("Sitemap: {}/sitemap.xml\n", config.base_url));
+    out.push_str(&format!("Sitemap: {}\n", config.full_url("sitemap.xml")));
     out
 }
 
@@ -471,12 +490,13 @@ pub fn atom_xml(config: &SiteConfig, pages: &[SeoPage]) -> String {
             html_escape(&config.author)
         ));
     }
-    let self_url = format!("{}/atom.xml", config.base_url);
+    let self_url = config.full_url("atom.xml");
+    let site_url = config.full_url("");
     out.push_str(&format!(
         "<link rel=\"self\" href=\"{}\"/>\n<link rel=\"alternate\" href=\"{}\"/>\n<id>{}/</id>\n",
         html_escape(&self_url),
-        config.base_url,
-        config.base_url,
+        html_escape(&site_url),
+        html_escape(&site_url),
     ));
     if let Some(newest) = dated.first() {
         if let Some(date) = &newest.date {
@@ -484,7 +504,7 @@ pub fn atom_xml(config: &SiteConfig, pages: &[SeoPage]) -> String {
         }
     }
     for page in dated {
-        let url = format!("{}/{}", config.base_url, page.route);
+        let url = config.full_url(&page.route);
         out.push_str(&format!(
             "<entry><title>{t}</title><link rel=\"alternate\" href=\"{u}\"/><id>{u}</id><published>{d}</published><summary>{s}</summary></entry>\n",
             t = html_escape(&page.title),

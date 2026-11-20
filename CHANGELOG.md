@@ -230,6 +230,16 @@ All notable changes to this project are documented in this file.
   JSON corpus scoring when the module is unavailable. Closing the
   search loop: the FST binary index is now queryable client-side.
 
+## [0.7.6] - 2026-11-20
+
+### Fixed (0.7.6)
+
+- Absolute URLs (canonical, og:url, JSON-LD `isPartOf`, feed link,
+  llms.txt, sitemap `<loc>`, robots `Sitemap:`, atom self/id/entries)
+  now join `base_path` via a single `SiteConfig::full_url` helper -
+  subpath-hosted sites (e.g. GitHub Pages previews) no longer emit
+  bare-origin or localhost canonicals.
+
 ## [0.7.5] - 2026-11-20
 
 ### Added (0.7.5)
