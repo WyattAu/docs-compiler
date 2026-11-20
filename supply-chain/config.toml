@@ -153,55 +153,55 @@ version = "0.2.17"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-assembler-x64]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-assembler-x64-meta]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-bforest]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-bitset]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-codegen]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-codegen-meta]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-codegen-shared]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-control]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-entity]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-frontend]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-isle]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-native]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.cranelift-srcgen]]
-version = "0.123.20"
+version = "0.123.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.crc32fast]]
@@ -637,11 +637,11 @@ version = "0.11.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.pulley-interpreter]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.pulley-macros]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.quote]]
@@ -949,71 +949,71 @@ version = "0.236.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-environ]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-asm-macros]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-component-macro]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-component-util]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-cranelift]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-fiber]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-jit-debug]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-jit-icache-coherence]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-math]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-slab]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-unwinder]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-versioned-export-macros]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-winch]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-internal-wit-bindgen]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-wasi]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasmtime-wasi-io]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wast]]
@@ -1033,15 +1033,15 @@ version = "0.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.wiggle]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wiggle-generate]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.wiggle-macro]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.winapi-util]]
@@ -1049,7 +1049,7 @@ version = "0.1.11"
 criteria = "safe-to-deploy"
 
 [[exemptions.winch-codegen]]
-version = "36.0.20"
+version = "36.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.windows-core]]
