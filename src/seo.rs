@@ -61,6 +61,10 @@ pub struct SiteConfig {
     pub base_path: String,
     /// Open Graph image URL, emitted as `og:image` + `twitter:image`.
     pub og_image: Option<String>,
+    /// Accent color as `#rgb`/`#rrggbb` hex, overriding `--accent` in
+    /// the chrome palette (both themes; light gets a darkened variant).
+    /// Absent/invalid = the default palette.
+    pub accent: Option<String>,
 }
 
 impl SiteConfig {
@@ -79,6 +83,7 @@ impl SiteConfig {
         let mut search_bin = None;
         let mut base_path = String::new();
         let mut og_image = None;
+        let mut accent = None;
         for line in text.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
@@ -100,6 +105,7 @@ impl SiteConfig {
                 "search_bin" => search_bin = Some(value),
                 "base_path" => base_path = value.trim_end_matches('/').to_string(),
                 "og_image" => og_image = Some(value),
+                "accent" => accent = Some(value),
                 _ => {}
             }
         }
@@ -115,6 +121,7 @@ impl SiteConfig {
             search_bin,
             base_path,
             og_image,
+            accent,
         })
     }
 }

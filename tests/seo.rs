@@ -34,6 +34,7 @@ fn sample_config() -> SiteConfig {
         search_island: Some("/_assets/islands/doc-search.js".into()),
         search_wasm: Some("/_assets/islands/docs_search.wasm".into()),
         search_bin: Some("/search.bin".into()),
+        accent: None,
     }
 }
 

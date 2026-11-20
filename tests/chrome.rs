@@ -8,7 +8,9 @@
     clippy::panic
 )]
 
-use docs_compiler::{chrome_layout_css, chrome_page, extract_toc, Chrome, NavGroup, TocEntry};
+use docs_compiler::{
+    accent_override, chrome_layout_css, chrome_page, extract_toc, Chrome, NavGroup, TocEntry,
+};
 
 fn sample_chrome(active_route: &str) -> Chrome {
     Chrome {
@@ -46,6 +48,7 @@ fn sample_chrome(active_route: &str) -> Chrome {
         search_index: Some("/search.json".into()),
         search_wasm: Some("/_assets/islands/docs_search.wasm".into()),
         search_bin: Some("/search.bin".into()),
+        accent: None,
     }
 }
 
@@ -107,4 +110,51 @@ fn layout_css_is_embedded() {
         chrome_layout_css.contains("data-theme"),
         "light palette present"
     );
+}
+
+#[test]
+fn accent_override_six_digit_hex() {
+    let css = accent_override("#ff5c7a").expect("valid hex");
+    assert!(css.contains("--accent:#ff5c7a"), "dark accent verbatim");
+    // Light variant: x0.55 per channel (255, 92, 122 -> 140, 50, 67).
+    assert!(css.contains("--accent:#8c3243"), "light accent darkened");
+    assert!(css.contains("rgba(255,92,122,0.14)"), "dark soft tint");
+    assert!(css.contains("rgba(140,50,67,0.12)"), "light soft tint");
+    assert!(css.starts_with("<style>") && css.ends_with("</style>"));
+}
+
+#[test]
+fn accent_override_three_digit_shorthand() {
+    let css = accent_override("#f00").expect("valid shorthand");
+    assert!(css.contains("--accent:#ff0000"), "shorthand expanded");
+}
+
+#[test]
+fn accent_override_invalid_is_none() {
+    for bad in ["red", "", "#12345", "#1234567", "##fff", "#gggggg"] {
+        assert!(accent_override(bad).is_none(), "{bad} rejected");
+    }
+}
+
+#[test]
+fn accent_wired_into_page_head_after_stylesheet() {
+    let mut chrome = sample_chrome("index.html");
+    chrome.accent = Some("#ff5c7a".into());
+    let page = chrome_page(
+        "<html><head><title>t</title></head><body><p>x</p></body></html>",
+        "S",
+        &chrome,
+        "",
+    );
+    let link = page.find("rel=\"stylesheet\"").expect("stylesheet link");
+    let style = page.find("<style>:root").expect("accent override");
+    assert!(style > link, "override wins the cascade (after the link)");
+    // Absent accent = no override block.
+    let plain = chrome_page(
+        "<html><head><title>t</title></head><body><p>x</p></body></html>",
+        "S",
+        &sample_chrome("index.html"),
+        "",
+    );
+    assert!(!plain.contains("<style>:root"), "default palette untouched");
 }

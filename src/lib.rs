@@ -41,7 +41,8 @@ mod seo;
 mod serve;
 
 pub use chrome::{
-    extract_toc, page as chrome_page, Chrome, NavGroup, TocEntry, LAYOUT_CSS as chrome_layout_css,
+    accent_override, extract_toc, page as chrome_page, Chrome, NavGroup, TocEntry,
+    LAYOUT_CSS as chrome_layout_css,
 };
 pub use compress::{ext_token, pick_encoding, sidecar_path, Tools};
 pub use directives::{resolve, BuildContext};

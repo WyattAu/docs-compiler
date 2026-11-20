@@ -229,3 +229,7 @@ All notable changes to this project are documented in this file.
   props — the island queries the wasm reader first and falls back to
   JSON corpus scoring when the module is unavailable. Closing the
   search loop: the FST binary index is now queryable client-side.
+- Site config gains `accent` (`#rgb`/`#rrggbb`): overrides the chrome
+  palette's `--accent` for both themes via a cascade-ordered inline
+  override (light gets a darkened variant; soft tints derived). Invalid
+  hex is ignored and the default palette stands.

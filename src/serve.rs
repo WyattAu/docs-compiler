@@ -181,6 +181,7 @@ pub fn compile_site_with(
             }),
             search_wasm: config.as_ref().and_then(|c| c.search_wasm.clone()),
             search_bin: config.as_ref().and_then(|c| c.search_bin.clone()),
+            accent: config.as_ref().and_then(|c| c.accent.clone()),
         };
         let doc = seo::document(
             &page.body,
@@ -272,6 +273,7 @@ pub fn compile_site_with(
             }),
             search_wasm: config.as_ref().and_then(|c| c.search_wasm.clone()),
             search_bin: config.as_ref().and_then(|c| c.search_bin.clone()),
+            accent: config.as_ref().and_then(|c| c.accent.clone()),
         },
         base_path_str.as_deref().unwrap_or(""),
     );

@@ -72,12 +72,60 @@ pub struct Chrome {
     pub search_wasm: Option<String>,
     /// The FST binary index URL (site-relative; prefixed).
     pub search_bin: Option<String>,
+    /// Accent color override (`#rgb`/`#rrggbb`), from `site.toml`.
+    /// None = the default palette.
+    pub accent: Option<String>,
 }
 
 /// The theme-toggle inline script: toggles `data-theme` on `<html>` and
 /// persists the choice. The one sanctioned inline script in the chrome
 /// (everything else dynamic rides islands).
 const THEME_SCRIPT: &str = "<script>const h=document.documentElement;const t=document.getElementById('theme-toggle');if(t){t.addEventListener('click',()=>{const n=h.dataset.theme==='light'?'dark':'light';h.dataset.theme=n;try{localStorage.setItem('docs-theme',n)}catch(e){}});}try{const s=localStorage.getItem('docs-theme');if(s)h.dataset.theme=s}catch(e){}</script>";
+
+/// Parse `#rgb`/`#rrggbb` hex into (r, g, b); None on anything else.
+fn parse_hex_color(s: &str) -> Option<(u8, u8, u8)> {
+    let h = s.strip_prefix('#')?;
+    match h.len() {
+        3 => {
+            let mut c = [0u8; 3];
+            for (slot, ch) in c.iter_mut().zip(h.chars()) {
+                *slot = (ch.to_digit(16)? * 17) as u8;
+            }
+            Some((c[0], c[1], c[2]))
+        }
+        6 => {
+            let mut c = [0u8; 3];
+            let mut chars = h.chars();
+            for slot in &mut c {
+                let hi = chars.next()?.to_digit(16)?;
+                let lo = chars.next()?.to_digit(16)?;
+                *slot = ((hi << 4) | lo) as u8;
+            }
+            Some((c[0], c[1], c[2]))
+        }
+        _ => None,
+    }
+}
+
+/// CSS `<style>` overriding the palette accent for a `site.toml`
+/// `accent = "#hex"` line, emitted after `layout.css` so it wins the
+/// cascade. Both themes take the accent; light gets a darkened variant
+/// (x0.55 per channel) for contrast on the near-white bg, and the soft
+/// tints mirror the defaults (0.14 dark / 0.12 light alpha). Invalid
+/// hex = None (the default palette stands).
+pub fn accent_override(accent: &str) -> Option<String> {
+    let (r, g, b) = parse_hex_color(accent)?;
+    let dark = format!("#{r:02x}{g:02x}{b:02x}");
+    let shade = |c: u8| (f32::from(c) * 0.55) as u8;
+    let light = format!("#{0:02x}{1:02x}{2:02x}", shade(r), shade(g), shade(b));
+    Some(format!(
+        "<style>:root,html[data-theme=\"dark\"]{{--accent:{dark};--accent-soft:rgba({r},{g},{b},0.14)}}\
+html[data-theme=\"light\"]{{--accent:{light};--accent-soft:rgba({0},{1},{2},0.12)}}</style>",
+        shade(r),
+        shade(g),
+        shade(b),
+    ))
+}
 
 /// Wrap a rendered page document with the site chrome. `doc` is the
 /// full `<!doctype html>...<body>content</body></html>` document from
@@ -87,7 +135,6 @@ const THEME_SCRIPT: &str = "<script>const h=document.documentElement;const t=doc
 /// site-relative URL the chrome emits (empty string = served at root).
 #[must_use]
 pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> String {
-    // Site-relative URL builder under the (possibly empty) base path.
     let url = |path: &str| {
         if base_path.is_empty() {
             format!("/{path}")
@@ -180,11 +227,16 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> St
 
     let css_link = url("_assets/layout.css");
     let _ = &css_link;
+    let accent_style = chrome
+        .accent
+        .as_deref()
+        .and_then(accent_override)
+        .unwrap_or_default();
 
     let doc = doc.replacen(
         "</head>",
         &format!(
-            "<link rel=\"stylesheet\" href=\"{}\"></head>",
+            "<link rel=\"stylesheet\" href=\"{}\">{accent_style}</head>",
             html_escape(&css_link)
         ),
         1,
