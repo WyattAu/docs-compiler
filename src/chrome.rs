@@ -13,10 +13,14 @@
 
 use crate::directives::html_escape;
 
-/// Prefix a site-relative URL with the chrome's base path. Paths may
-/// carry a leading slash; exactly one separator lands between the
-/// base path and the path either way.
+/// Prefix a site-relative URL with the chrome's base path. Absolute
+/// URLs pass through untouched; paths may carry a leading slash, and
+/// exactly one separator lands between the base path and the path
+/// either way.
 fn site_url(base_path: &str, path: &str) -> String {
+    if path.starts_with("https://") || path.starts_with("http://") {
+        return path.to_string();
+    }
     let path = path.strip_prefix('/').unwrap_or(path);
     if base_path.is_empty() {
         return format!("/{path}");
@@ -63,8 +67,9 @@ pub struct Chrome {
     pub prev: Option<(String, String)>,
     /// Next page: (route, title).
     pub next: Option<(String, String)>,
-    /// Search island chunk URL, when the site wires search. Emitted
-    /// verbatim (a site.toml author includes any base path).
+    /// Search island chunk URL. Site-relative values (leading `/`) are
+    /// prefixed with the base path like every other URL; absolute URLs
+    /// pass through untouched.
     pub search_island: Option<String>,
     /// The search corpus URL handed to the island via props. Prefixed
     /// with the base path like every other site-relative link.
@@ -223,7 +228,7 @@ pub fn page(doc: &str, site_title: &str, chrome: &Chrome, base_path: &str) -> St
         };
         format!(
             "<docs-island component-url=\"{u}\" client=\"idle\"><script type=\"application/json\" data-island-props>{props}</script></docs-island>",
-            u = html_escape(chunk),
+            u = html_escape(&site_url(base_path, chunk)),
         )
     });
 

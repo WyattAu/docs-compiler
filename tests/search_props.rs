@@ -41,6 +41,28 @@ fn search_props_are_single_prefixed_under_a_base_path() {
         props,
         "{\"index\":\"/solid-fx/search.json\",\"wasm\":\"/solid-fx/_assets/islands/docs_search.wasm\",\"bin\":\"/solid-fx/search.bin\"}"
     );
+    // The island chunk itself is prefixed too (0.7.8 regression: the
+    // verbatim URL 404'd under every subpath deploy).
+    assert!(
+        page.contains("component-url=\"/solid-fx/_assets/islands/seo-doc-search.js\""),
+        "chunk URL carries the base path"
+    );
+}
+
+#[test]
+fn absolute_island_urls_pass_through_untouched() {
+    let mut chrome = sample_chrome();
+    chrome.search_island = Some("https://cdn.example.com/islands/search.js".into());
+    let page = chrome_page(
+        "<html><head><title>t</title></head><body><p>x</p></body></html>",
+        "S",
+        &chrome,
+        "/x",
+    );
+    assert!(
+        page.contains("component-url=\"https://cdn.example.com/islands/search.js\""),
+        "absolute chunk URL not mangled"
+    );
 }
 
 #[test]

@@ -230,6 +230,17 @@ All notable changes to this project are documented in this file.
   JSON corpus scoring when the module is unavailable. Closing the
   search loop: the FST binary index is now queryable client-side.
 
+## [0.7.9] - 2026-11-21
+
+### Fixed (0.7.9)
+
+- The search island chunk URL (`search_island`) now prefixes like
+  every other site-relative URL. The old verbatim contract 404'd the
+  chunk under every subpath deploy - hydration failed and the header
+  search never mounted. Absolute http(s) URLs pass through untouched.
+  Caught live by the W2-14 on-site console audit; guarded in
+  `tests/search_props.rs`.
+
 ## [0.7.8] - 2026-11-21
 
 ### Fixed (0.7.8)
