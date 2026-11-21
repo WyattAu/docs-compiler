@@ -44,7 +44,7 @@ pub use chrome::{
     accent_override, extract_toc, page as chrome_page, Chrome, NavGroup, TocEntry,
     LAYOUT_CSS as chrome_layout_css,
 };
-pub use compress::{ext_token, pick_encoding, sidecar_path, Tools};
+pub use compress::{ext_token, pick_encoding, sidecar_path, sidecars, Tools};
 pub use directives::{resolve, BuildContext};
 pub use error::CompilerError;
 pub use fences::{scan, Directive, DirectiveKind, Scanned};

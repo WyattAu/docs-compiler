@@ -62,7 +62,7 @@ fn available(tool: &str, args: &[&str]) -> bool {
 pub fn sidecars(tools: &Tools, path: &Path) -> io::Result<Vec<&'static str>> {
     let mut produced = Vec::new();
     let jobs: [(&str, &str, &[&str]); 3] = [
-        ("gzip", "gz", &["-9", "-c"]),
+        ("gzip", "gz", &["-9", "-n", "-c"]),
         ("brotli", "br", &["-q", "11", "-c"]),
         ("zstd", "zst", &["-19", "-q", "-c"]),
     ];

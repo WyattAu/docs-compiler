@@ -230,6 +230,17 @@ All notable changes to this project are documented in this file.
   JSON corpus scoring when the module is unavailable. Closing the
   search loop: the FST binary index is now queryable client-side.
 
+## [0.7.7] - 2026-11-21
+
+### Fixed (0.7.7)
+
+- Precompression: `gzip -n` - the gz sidecar no longer records the
+  artifact mtime in its header. Two builds of the same source were
+  byte-identical in every raw artifact but differed in all 479 gz
+  sidecars (caught by the Phase C flip audit's determinism check);
+  brotli/zstd/dcz/dict were already stable. Guarded by a determinism
+  oracle (same bytes, mtimes 4.5 years apart, identical sidecars).
+
 ## [0.7.6] - 2026-11-20
 
 ### Fixed (0.7.6)

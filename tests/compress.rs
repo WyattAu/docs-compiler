@@ -9,7 +9,7 @@
     clippy::panic
 )]
 
-use docs_compiler::{compile_site, pick_encoding, Tools};
+use docs_compiler::{compile_site, pick_encoding, sidecar_path, sidecars, Tools};
 use std::path::Path;
 
 fn write(path: &Path, content: &str) {
@@ -120,4 +120,40 @@ fn tiny_sites_skip_the_dictionary_with_a_reported_warning() {
         "skip is reported: {:?}",
         report.warnings
     );
+}
+
+/// gzip must not embed mtimes: two compressions of the same bytes
+/// (files with deliberately different mtimes) produce byte-identical
+/// sidecars, or the site is not byte-reproducible. The 2026-11-20 flip
+/// audit caught exactly this: 479 gz sidecars differed between two
+/// builds of the same source because `gzip -9` recorded the file
+/// mtime in the header.
+#[test]
+fn gz_sidecars_are_deterministic() {
+    let dir = std::env::temp_dir().join(format!("docs-compiler-det-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("tmp dir");
+    let a = dir.join("a.html");
+    let b = dir.join("b.html");
+    std::fs::write(&a, b"<p>same</p>").expect("write a");
+    std::fs::write(&b, b"<p>same</p>").expect("write b");
+    // 2020-01-01 vs 2024-06-01, deliberately far apart.
+    for (p, secs) in [(&a, 1_577_836_800), (&b, 1_717_200_000)] {
+        let f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(p)
+            .expect("open");
+        let t = std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs);
+        f.set_times(std::fs::FileTimes::new().set_modified(t))
+            .expect("utime");
+    }
+    let tools = Tools::detect();
+    if !tools.gzip {
+        eprintln!("gzip absent; determinism test skipped");
+        return;
+    }
+    sidecars(&tools, &a).expect("sidecars a");
+    sidecars(&tools, &b).expect("sidecars b");
+    let ga = std::fs::read(sidecar_path(&a, "gz")).expect("gz a");
+    let gb = std::fs::read(sidecar_path(&b, "gz")).expect("gz b");
+    assert_eq!(ga, gb, "gzip sidecars must not depend on file mtime");
 }
