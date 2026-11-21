@@ -13,13 +13,15 @@
 
 use crate::directives::html_escape;
 
-/// Prefix a site-relative URL with the chrome's base path.
+/// Prefix a site-relative URL with the chrome's base path. Paths may
+/// carry a leading slash; exactly one separator lands between the
+/// base path and the path either way.
 fn site_url(base_path: &str, path: &str) -> String {
+    let path = path.strip_prefix('/').unwrap_or(path);
     if base_path.is_empty() {
-        format!("/{path}")
-    } else {
-        format!("{base_path}/{path}")
+        return format!("/{path}");
     }
+    format!("{base_path}/{path}")
 }
 
 /// The chrome stylesheet, embedded at compile time and emitted by the

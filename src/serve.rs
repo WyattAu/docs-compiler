@@ -175,10 +175,7 @@ pub fn compile_site_with(
             prev: prev_of(&pages, &page.route),
             next: next_of(&pages, &page.route),
             search_island: config.as_ref().and_then(|c| c.search_island.clone()),
-            search_index: Some(match base_path_str.as_deref() {
-                Some("") | None => "/search.json".to_string(),
-                Some(bp) => format!("{bp}/search.json"),
-            }),
+            search_index: Some("/search.json".to_string()),
             search_wasm: config.as_ref().and_then(|c| c.search_wasm.clone()),
             search_bin: config.as_ref().and_then(|c| c.search_bin.clone()),
             accent: config.as_ref().and_then(|c| c.accent.clone()),
@@ -267,10 +264,7 @@ pub fn compile_site_with(
             prev: None,
             next: None,
             search_island: config.as_ref().and_then(|c| c.search_island.clone()),
-            search_index: Some(match base_path_str.as_deref() {
-                Some("") | None => "/search.json".to_string(),
-                Some(bp) => format!("{bp}/search.json"),
-            }),
+            search_index: Some("/search.json".to_string()),
             search_wasm: config.as_ref().and_then(|c| c.search_wasm.clone()),
             search_bin: config.as_ref().and_then(|c| c.search_bin.clone()),
             accent: config.as_ref().and_then(|c| c.accent.clone()),

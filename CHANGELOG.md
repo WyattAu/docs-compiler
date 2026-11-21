@@ -230,6 +230,19 @@ All notable changes to this project are documented in this file.
   JSON corpus scoring when the module is unavailable. Closing the
   search loop: the FST binary index is now queryable client-side.
 
+## [0.7.8] - 2026-11-21
+
+### Fixed (0.7.8)
+
+- Search island props no longer double-prefix under a base path:
+  `search_index` was prefixed twice (once by the site builder, once by
+  the chrome) and the wasm/bin URLs carried a double slash after the
+  base path. Both emitted 404 URLs - search silently returned nothing
+  in every subpath deploy. The chrome's `site_url` now normalizes a
+  leading slash; `search_index` carries the site-relative path once.
+  Guarded by `tests/search_props.rs` (subpath, root, and JSON-only
+  shapes).
+
 ## [0.7.7] - 2026-11-21
 
 ### Fixed (0.7.7)
